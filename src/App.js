@@ -4,7 +4,7 @@ import './App.css';
 
 function App() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -18,6 +18,7 @@ function App() {
   const [isBuffering, setIsBuffering] = useState(false);
   const [isDarkTheme, setIsDarkTheme] = useState(true);
   const [favoriteTracksCount, setFavoriteTracksCount] = useState(0);
+  const [favoriteTracksIds, setFavoriteTracksIds] = useState(new Set());
   const audioRef = useRef(null);
   const progressRef = useRef(null);
 
@@ -348,36 +349,111 @@ function App() {
     }
   };
 
+  // Функция для добавления/удаления трека из любимых
+  const toggleFavorite = useCallback(async (trackId) => {
+    try {
+      setLoading(true);
+      const isFavorite = favoriteTracksIds.has(trackId);
+      
+      if (isFavorite) {
+        await ytmusicService.removeFromFavorites(trackId);
+        setFavoriteTracksIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(trackId);
+          return newSet;
+        });
+      } else {
+        await ytmusicService.addToFavorites(trackId);
+        setFavoriteTracksIds(prev => new Set([...prev, trackId]));
+      }
+    } catch (error) {
+      setError('Ошибка при обновлении избранного');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [favoriteTracksIds]);
+
+  // Функция для проверки, является ли трек любимым
+  const checkIsFavorite = useCallback(async (trackId) => {
+    try {
+      const isFavorite = await ytmusicService.checkIsFavorite(trackId);
+      if (isFavorite) {
+        setFavoriteTracksIds(prev => new Set([...prev, trackId]));
+      }
+      return isFavorite;
+    } catch (error) {
+      console.error('Ошибка проверки избранного:', error);
+      return false;
+    }
+  }, []);
+
+  // Добавляем эффект для загрузки состояния любимых треков при монтировании
+  useEffect(() => {
+    const loadFavoriteStates = async () => {
+      try {
+        const favorites = await ytmusicService.getFavoriteTracks();
+        const favoriteIds = new Set(favorites.map(track => track.id));
+        setFavoriteTracksIds(favoriteIds);
+      } catch (error) {
+        console.error('Ошибка загрузки состояний избранного:', error);
+      }
+    };
+
+    loadFavoriteStates();
+  }, []);
+
+  // Обновляем функцию рендеринга списка треков
   const renderTrackList = useCallback((tracks, title) => (
     <div className="track-list">
       <h2>{title}</h2>
-      {tracks.map(track => (
-        <div 
-          key={track.id} 
-          className={`track-item ${currentTrack?.id === track.id ? 'active' : ''}`}
-          onClick={() => !loading && handleTrackSelect(track)}
-        >
-          <img 
-            src={track.album?.images[0]?.url || '/default-album.png'} 
-            alt={track.name} 
-            className="track-image"
-            onError={(e) => {
-              e.target.src = '/default-album.png';
-            }}
-          />
-          <div className="track-info">
-            <h3>{track.name}</h3>
-            <p>{track.artists.map(artist => artist.name).join(', ')}</p>
-          </div>
-          {currentTrack?.id === track.id && (
-            <div className="track-status">
-              {loading ? '⌛' : (isPlaying ? '▶' : '⏸')}
-            </div>
+      {tracks.length === 0 ? (
+        <div className="empty-list-message">
+          <span className="empty-icon">💔</span>
+          <p>Список пуст</p>
+          {title === 'Любимые треки' && (
+            <p className="empty-description">
+              Нажмите на сердечко рядом с треком, чтобы добавить его в избранное
+            </p>
           )}
         </div>
-      ))}
+      ) : (
+        tracks.map(track => (
+          <div 
+            key={track.id} 
+            className={`track-item ${currentTrack?.id === track.id ? 'active' : ''}`}
+          >
+            <div className="track-main" onClick={() => !loading && handleTrackSelect(track)}>
+              <img 
+                src={track.album?.images[0]?.url || '/default-album.png'} 
+                alt={track.name} 
+                className="track-image"
+                onError={(e) => {
+                  e.target.src = '/default-album.png';
+                }}
+              />
+              <div className="track-info">
+                <h3>{track.name}</h3>
+                <p>{track.artists.map(artist => artist.name).join(', ')}</p>
+              </div>
+              {currentTrack?.id === track.id && (
+                <div className="track-status">
+                  {loading ? '⌛' : (isPlaying ? '▶' : '⏸')}
+                </div>
+              )}
+            </div>
+            <button 
+              className="favorite-button"
+              onClick={() => toggleFavorite(track.id)}
+              disabled={loading}
+            >
+              {favoriteTracksIds.has(track.id) ? '❤️' : '🤍'}
+            </button>
+          </div>
+        ))
+      )}
     </div>
-  ), [currentTrack, loading, isPlaying, handleTrackSelect]);
+  ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite]);
 
   // Компонент для отображения ошибок
   const ErrorMessage = ({ message }) => (
@@ -557,7 +633,7 @@ function App() {
                   <span className="stat-icon">🎧</span>
                 </div>
                 <div className="stat-content">
-                  <span className="stat-value">{searchResults.length}</span>
+                  <span className="stat-value">{searchResults?.length || 0}</span>
                   <span className="stat-label">Найдено треков</span>
                 </div>
               </div>
@@ -618,10 +694,27 @@ function App() {
         
         {loading && <div className="loading">Загрузка...</div>}
         
-        {searchResults.length > 0 && renderTrackList(searchResults, 'Результаты поиска')}
-        
-        {!searchResults.length && recommendations.length > 0 && 
-          renderTrackList(recommendations, 'Рекомендации')}
+        {!loading && (
+          <>
+            {searchResults && searchResults.length > 0 ? (
+              renderTrackList(searchResults, 'Результаты поиска')
+            ) : searchResults !== null && (
+              <div className="track-list">
+                <h2>Любимые треки</h2>
+                <div className="empty-list-message">
+                  <span className="empty-icon">💔</span>
+                  <p>Список любимых треков пуст</p>
+                  <p className="empty-description">
+                    Нажмите на сердечко рядом с треком, чтобы добавить его в избранное
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {!searchResults?.length && recommendations.length > 0 && 
+              renderTrackList(recommendations, 'Рекомендации')}
+          </>
+        )}
       </main>
 
       {currentTrack && (

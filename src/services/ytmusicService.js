@@ -57,22 +57,50 @@ class YoutubeMusicService {
 
     async getFavoriteTracks() {
         try {
-            const response = await fetch(`${API_BASE_URL}/favorites`);
-            if (!response.ok) throw new Error('Failed to fetch favorite tracks');
-            return await response.json();
+            const response = await axios.get(`${API_BASE_URL}/favorites`);
+            return response.data;
         } catch (error) {
-            console.error('Error fetching favorite tracks:', error);
+            console.error('Ошибка получения любимых треков:', error);
             throw error;
+        }
+    }
+
+    async addToFavorites(id) {
+        try {
+            const response = await axios.post(`${API_BASE_URL}/favorites/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Ошибка добавления в любимые:', error);
+            throw error;
+        }
+    }
+
+    async removeFromFavorites(id) {
+        try {
+            const response = await axios.delete(`${API_BASE_URL}/favorites/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Ошибка удаления из любимых:', error);
+            throw error;
+        }
+    }
+
+    async checkIsFavorite(id) {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/favorites/${id}`);
+            return response.data.isFavorite;
+        } catch (error) {
+            console.error('Ошибка проверки избранного:', error);
+            return false;
         }
     }
 
     async getNewReleases() {
         try {
-            const response = await fetch(`${API_BASE_URL}/new-releases`);
-            if (!response.ok) throw new Error('Failed to fetch new releases');
-            return await response.json();
+            const response = await axios.get(`${API_BASE_URL}/new-releases`);
+            return response.data;
         } catch (error) {
-            console.error('Error fetching new releases:', error);
+            console.error('Ошибка получения новых релизов:', error);
             throw error;
         }
     }

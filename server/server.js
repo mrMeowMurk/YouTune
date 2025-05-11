@@ -10,10 +10,13 @@ const port = process.env.PORT || 5000;
 // Настройка CORS
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
     exposedHeaders: ['Content-Length', 'Content-Range', 'Accept-Ranges']
 }));
+
+// Add OPTIONS handling for all routes
+app.options('*', cors());
 
 app.use(express.json());
 
@@ -50,6 +53,9 @@ const trackCache = new Map();
 setInterval(() => {
     trackCache.clear();
 }, 3600000);
+
+// Хранилище для любимых треков (в реальном приложении использовать базу данных)
+const favoriteTracks = new Map();
 
 // Функция для подготовки трека
 async function prepareTrack(id) {
@@ -359,6 +365,95 @@ async function formatTrackResponse(track) {
         duration_ms: track.duration || 0
     };
 }
+
+// Получение любимых треков
+app.get('/api/favorites', async (req, res) => {
+    try {
+        // Преобразуем Map в массив треков
+        const trackPromises = Array.from(favoriteTracks.keys()).map(async (id) => {
+            try {
+                // Получаем информацию о треке через поиск по ID
+                const searchResults = await api.search(id, "song");
+                const track = searchResults.content.find(t => t.videoId === id);
+                if (track) {
+                    return await formatTrackResponse(track);
+                }
+                return null;
+            } catch (error) {
+                console.error(`Ошибка получения трека ${id}:`, error);
+                return null;
+            }
+        });
+
+        const tracks = await Promise.all(trackPromises);
+        const validTracks = tracks.filter(track => track !== null);
+        
+        res.json(validTracks);
+    } catch (error) {
+        console.error('Ошибка получения любимых треков:', error);
+        res.status(500).json({ error: 'Ошибка при получении любимых треков' });
+    }
+});
+
+// Добавление трека в любимые
+app.post('/api/favorites/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ error: 'ID трека обязателен' });
+        }
+
+        // Получаем информацию о треке
+        const searchResults = await api.search(id, "song");
+        const track = searchResults.content.find(t => t.videoId === id);
+        
+        if (!track) {
+            return res.status(404).json({ error: 'Трек не найден' });
+        }
+
+        // Добавляем трек в любимые
+        favoriteTracks.set(id, track);
+        
+        res.json({ success: true, message: 'Трек добавлен в любимые' });
+    } catch (error) {
+        console.error('Ошибка добавления в любимые:', error);
+        res.status(500).json({ error: 'Ошибка при добавлении трека в любимые' });
+    }
+});
+
+// Удаление трека из любимых
+app.delete('/api/favorites/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ error: 'ID трека обязателен' });
+        }
+
+        // Удаляем трек из любимых
+        favoriteTracks.delete(id);
+        
+        res.json({ success: true, message: 'Трек удален из любимых' });
+    } catch (error) {
+        console.error('Ошибка удаления из любимых:', error);
+        res.status(500).json({ error: 'Ошибка при удалении трека из любимых' });
+    }
+});
+
+// Проверка, находится ли трек в любимых
+app.get('/api/favorites/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ error: 'ID трека обязателен' });
+        }
+
+        const isFavorite = favoriteTracks.has(id);
+        res.json({ isFavorite });
+    } catch (error) {
+        console.error('Ошибка проверки избранного:', error);
+        res.status(500).json({ error: 'Ошибка при проверке избранного' });
+    }
+});
 
 // Глобальная обработка ошибок
 app.use((err, req, res, next) => {
