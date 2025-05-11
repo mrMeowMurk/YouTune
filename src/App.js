@@ -16,8 +16,33 @@ function App() {
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(true);
+  const [favoriteTracksCount, setFavoriteTracksCount] = useState(0);
   const audioRef = useRef(null);
   const progressRef = useRef(null);
+
+  // Обработка темы
+  useEffect(() => {
+    // Проверяем сохраненную тему
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setIsDarkTheme(savedTheme === 'dark');
+    } else {
+      // Проверяем системные настройки
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkTheme(prefersDark);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Применяем тему
+    document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
+    localStorage.setItem('theme', isDarkTheme ? 'dark' : 'light');
+  }, [isDarkTheme]);
+
+  const toggleTheme = () => {
+    setIsDarkTheme(!isDarkTheme);
+  };
 
   // Проверка состояния сервера и загрузка рекомендаций
   useEffect(() => {
@@ -364,6 +389,69 @@ function App() {
     </div>
   );
 
+  // Добавляем приветственное сообщение
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Доброе утро';
+    if (hour >= 12 && hour < 18) return 'Добрый день';
+    if (hour >= 18 && hour < 23) return 'Добрый вечер';
+    return 'Доброй ночи';
+  };
+
+  // Функция для воспроизведения случайного плейлиста
+  const playRandomPlaylist = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Получаем случайный трек из рекомендаций
+      if (recommendations.length > 0) {
+        const randomIndex = Math.floor(Math.random() * recommendations.length);
+        await handleTrackSelect(recommendations[randomIndex]);
+      } else {
+        // Если рекомендации пусты, загружаем новые
+        await loadRecommendations();
+      }
+    } catch (error) {
+      setError('Не удалось воспроизвести случайный плейлист');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [recommendations, handleTrackSelect]);
+
+  // Функция для загрузки любимых треков
+  const loadFavoriteTracks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Здесь будет запрос к API для получения любимых треков
+      const response = await ytmusicService.getFavoriteTracks();
+      setSearchResults(response);
+      setFavoriteTracksCount(response.length);
+    } catch (error) {
+      setError('Не удалось загрузить любимые треки');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Функция для загрузки новых релизов
+  const loadNewReleases = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Здесь будет запрос к API для получения новых релизов
+      const response = await ytmusicService.getNewReleases();
+      setSearchResults(response);
+    } catch (error) {
+      setError('Не удалось загрузить новые релизы');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -378,23 +466,154 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>YouTube Music Player</h1>
-        <form onSubmit={handleSearch} className="search-form">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск треков..."
-            className="search-input"
-            disabled={loading}
-          />
-          <button type="submit" className="search-button" disabled={loading}>
-            {loading ? 'Поиск...' : 'Поиск'}
-          </button>
-        </form>
+        <div className="header-navigation">
+          <div className="header-left">
+            <div className="app-logo">
+              <span className="logo-icon">🎵</span>
+              <span className="logo-text">YTMusic</span>
+            </div>
+          </div>
+
+          <div className="search-container">
+            <form onSubmit={handleSearch} className="search-form">
+              <div className="search-input-wrapper">
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Что хотите послушать?"
+                  className="search-input"
+                  disabled={loading}
+                />
+              </div>
+            </form>
+          </div>
+
+          <div className="header-right">
+            <button 
+              className="theme-toggle" 
+              onClick={toggleTheme}
+              title={isDarkTheme ? "Включить светлую тему" : "Включить темную тему"}
+            >
+              {isDarkTheme ? '☀️' : '🌙'}
+            </button>
+            <button className="install-button">
+              Установить приложение
+            </button>
+            <button className="profile-button">
+              <span className="profile-icon">👤</span>
+            </button>
+          </div>
+        </div>
       </header>
 
       <main className="main-content">
+        <div className="greeting-section">
+          <div className="greeting-content">
+            <div className="greeting-header">
+              <div className="greeting-title-group">
+                <h1 className="greeting-title">{getGreeting()}</h1>
+                <div className="greeting-weather">
+                  <span className="weather-icon">☀️</span>
+                  <span className="weather-temp">+23°C</span>
+                </div>
+              </div>
+              <div className="greeting-time-wrapper">
+                <div className="greeting-date">
+                  {new Date().toLocaleDateString('ru-RU', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
+                <div className="greeting-time">
+                  {new Date().toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            <div className="greeting-message">
+              <p className="greeting-subtitle">Добро пожаловать в YouTube Music Player</p>
+              <p className="greeting-description">Откройте для себя новую музыку и наслаждайтесь любимыми треками</p>
+            </div>
+
+            <div className="greeting-stats">
+              <div className="stat-item">
+                <div className="stat-icon-wrapper">
+                  <span className="stat-icon">🎵</span>
+                </div>
+                <div className="stat-content">
+                  <span className="stat-value">{recommendations.length}</span>
+                  <span className="stat-label">Рекомендаций</span>
+                </div>
+              </div>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <div className="stat-icon-wrapper">
+                  <span className="stat-icon">🎧</span>
+                </div>
+                <div className="stat-content">
+                  <span className="stat-value">{searchResults.length}</span>
+                  <span className="stat-label">Найдено треков</span>
+                </div>
+              </div>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <div className="stat-icon-wrapper">
+                  <span className="stat-icon">🔥</span>
+                </div>
+                <div className="stat-content">
+                  <span className="stat-value">24</span>
+                  <span className="stat-label">Популярных</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="quick-actions">
+              <button 
+                className="action-button" 
+                onClick={playRandomPlaylist}
+                disabled={loading || recommendations.length === 0}
+              >
+                <span className="action-icon">▶️</span>
+                <span>Случайный плейлист</span>
+              </button>
+              <button 
+                className="action-button"
+                onClick={loadFavoriteTracks}
+                disabled={loading}
+              >
+                <span className="action-icon">❤️</span>
+                <span>Любимые треки</span>
+              </button>
+              <button 
+                className="action-button"
+                onClick={loadNewReleases}
+                disabled={loading}
+              >
+                <span className="action-icon">🎵</span>
+                <span>Новые релизы</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="greeting-decoration">
+            <div className="decoration-circles">
+              <div className="circle circle-1"></div>
+              <div className="circle circle-2"></div>
+              <div className="circle circle-3"></div>
+            </div>
+            <div className="decoration-waves">
+              <div className="wave wave-1"></div>
+              <div className="wave wave-2"></div>
+            </div>
+          </div>
+        </div>
+
         {error && <ErrorMessage message={error} />}
         
         {loading && <div className="loading">Загрузка...</div>}
@@ -403,154 +622,126 @@ function App() {
         
         {!searchResults.length && recommendations.length > 0 && 
           renderTrackList(recommendations, 'Рекомендации')}
+      </main>
 
-        {currentTrack && (
-          <div className="player">
-            <div className="player-content">
-              <div className="current-track">
-                <img 
-                  src={currentTrack.album?.images[0]?.url || '/default-album.png'} 
-                  alt={currentTrack.name} 
-                  className="current-track-image"
-                  onError={(e) => {
-                    e.target.src = '/default-album.png';
-                  }}
-                />
-                <div className="current-track-info">
-                  <h3>{currentTrack.name}</h3>
-                  <p>{currentTrack.artists.map(artist => artist.name).join(', ')}</p>
-                </div>
-                <div className="player-controls">
-                  <button 
-                    className="play-button"
-                    onClick={togglePlay}
-                    disabled={loading || isBuffering}
-                  >
-                    {isBuffering ? '⌛' : (isPlaying ? '⏸' : '▶')}
-                  </button>
-                  <div className="volume-control">
-                    <button onClick={toggleMute}>
-                      {isMuted ? '🔇' : volume > 0.5 ? '🔊' : volume > 0 ? '🔉' : '🔈'}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={isMuted ? 0 : volume}
-                      onChange={handleVolumeChange}
-                      className="volume-slider"
-                    />
-                  </div>
-                </div>
+      {currentTrack && (
+        <div className="spotify-player">
+          <div className="spotify-player-content">
+            <div className="player-left">
+              <img 
+                src={currentTrack.album?.images[0]?.url || '/default-album.png'} 
+                alt={currentTrack.name}
+                className="current-track-image"
+                onError={(e) => {
+                  e.target.src = '/default-album.png';
+                }}
+              />
+              <div className="current-track-info">
+                <h3>{currentTrack.name}</h3>
+                <p>{currentTrack.artists.map(artist => artist.name).join(', ')}</p>
               </div>
+            </div>
+
+            <div className="player-center">
               <div className="player-controls">
-                <div className="progress-container">
-                  <div className="time-display" title="Текущее время">
-                    {formatTime(progress)}
-                  </div>
+                <button 
+                  className="control-button"
+                  onClick={togglePlay}
+                  disabled={loading || isBuffering}
+                  title={isPlaying ? "Пауза" : "Воспроизвести"}
+                >
+                  {isBuffering ? '⌛' : (isPlaying ? '⏸' : '▶')}
+                </button>
+              </div>
+              <div className="progress-container">
+                <span className="time-display">{formatTime(progress)}</span>
+                <div 
+                  className="progress-bar" 
+                  ref={progressRef}
+                  onClick={handleProgressClick}
+                >
                   <div 
-                    className="progress-bar" 
-                    ref={progressRef}
-                    onClick={handleProgressClick}
+                    className="progress-fill" 
                     style={{ 
-                      cursor: loading || isBuffering ? 'not-allowed' : 'pointer',
-                      opacity: loading || isBuffering ? 0.6 : 1
+                      width: `${duration > 0 ? (progress / duration) * 100 : 0}%` 
                     }}
-                  >
-                    <div 
-                      className="progress-fill" 
-                      style={{ 
-                        width: `${duration > 0 ? (progress / duration) * 100 : 0}%`,
-                        transition: isBuffering ? 'none' : 'width 0.1s linear'
-                      }}
-                    />
-                  </div>
-                  <div className="time-display" title="Общая длительность">
-                    {formatTime(duration)}
-                  </div>
+                  />
                 </div>
+                <span className="time-display">{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            <div className="player-right">
+              <div className="volume-control">
+                <button onClick={toggleMute} className="volume-button">
+                  {isMuted ? '🔇' : volume > 0.5 ? '🔊' : volume > 0 ? '🔉' : '🔈'}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  className="volume-slider"
+                />
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <audio
-          ref={audioRef}
-          preload="metadata"
-          onLoadStart={() => {
-            setIsBuffering(true);
-            setError(null);
-          }}
-          onLoadedMetadata={(e) => {
-            const duration = e.target.duration;
-            if (!isNaN(duration) && duration > 0) {
-              setDuration(duration);
-            }
-          }}
-          onCanPlayThrough={() => {
-            setIsBuffering(false);
-            if (isPlaying && audioRef.current?.paused) {
-              audioRef.current.play().catch(error => {
-                console.error('Ошибка возобновления воспроизведения:', error);
-              });
-            }
-          }}
-          onPlaying={() => {
-            setIsBuffering(false);
-            setIsPlaying(true);
-            setError(null);
-          }}
-          onTimeUpdate={(e) => {
-            const currentTime = e.target.currentTime;
-            const duration = e.target.duration;
-            if (!isNaN(currentTime)) {
-              setProgress(currentTime);
-            }
-            if (!isNaN(duration) && duration > 0) {
-              setDuration(duration);
-            }
-          }}
-          onError={(e) => {
-            const error = e.target.error;
-            if (error) {
-              console.error('Ошибка аудио элемента:', error);
-              if (!isPlaying) {
-                let errorMessage = 'Ошибка воспроизведения';
-                switch (error.code) {
-                  case 1:
-                    errorMessage = 'Загрузка прервана';
-                    break;
-                  case 2:
-                    errorMessage = 'Ошибка сети';
-                    break;
-                  case 3:
-                    errorMessage = 'Ошибка декодирования';
-                    break;
-                  case 4:
-                    errorMessage = 'Формат не поддерживается';
-                    break;
-                }
-                setError(`${errorMessage}. Попробуйте другой трек.`);
-              }
-            }
-            setIsPlaying(false);
-            setLoading(false);
-            setIsBuffering(false);
-          }}
-          onEnded={() => {
-            setIsPlaying(false);
-            setProgress(0);
-            // Очищаем при размонтировании компонента
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.src = '';
-            }
-          }}
-          onWaiting={() => setIsBuffering(true)}
-          onStalled={() => setIsBuffering(true)}
-        />
-      </main>
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        onLoadStart={() => {
+          setIsBuffering(true);
+          setError(null);
+        }}
+        onLoadedMetadata={(e) => {
+          const duration = e.target.duration;
+          if (!isNaN(duration) && duration > 0) {
+            setDuration(duration);
+          }
+        }}
+        onCanPlayThrough={() => {
+          setIsBuffering(false);
+          if (isPlaying && audioRef.current?.paused) {
+            audioRef.current.play().catch(error => {
+              console.error('Ошибка возобновления воспроизведения:', error);
+            });
+          }
+        }}
+        onPlaying={() => {
+          setIsBuffering(false);
+          setIsPlaying(true);
+          setError(null);
+        }}
+        onTimeUpdate={(e) => {
+          const currentTime = e.target.currentTime;
+          if (!isNaN(currentTime)) {
+            setProgress(currentTime);
+          }
+        }}
+        onError={(e) => {
+          const error = e.target.error;
+          console.error('Ошибка аудио элемента:', error);
+          setError(`Ошибка воспроизведения. Попробуйте другой трек.`);
+          setIsPlaying(false);
+          setLoading(false);
+          setIsBuffering(false);
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          setProgress(0);
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.src = '';
+          }
+        }}
+        onWaiting={() => setIsBuffering(true)}
+        onStalled={() => setIsBuffering(true)}
+      />
 
       {(loading || isBuffering) && (
         <div className="loading-overlay">

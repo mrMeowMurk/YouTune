@@ -27,10 +27,11 @@ class YoutubeMusicService {
 
     async getTrack(id) {
         try {
-            const response = await axios.get(`${API_BASE_URL}/track/${id}`);
-            return response.data;
+            const response = await fetch(`${API_BASE_URL}/track/${id}`);
+            if (!response.ok) throw new Error('Failed to fetch track');
+            return await response.json();
         } catch (error) {
-            console.error('Ошибка получения трека:', error);
+            console.error('Error fetching track:', error);
             throw error;
         }
     }
@@ -52,6 +53,28 @@ class YoutubeMusicService {
         }
         const { data } = await axios.get(`${API_BASE_URL}/play/${id}`);
         return data.url;
+    }
+
+    async getFavoriteTracks() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/favorites`);
+            if (!response.ok) throw new Error('Failed to fetch favorite tracks');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching favorite tracks:', error);
+            throw error;
+        }
+    }
+
+    async getNewReleases() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/new-releases`);
+            if (!response.ok) throw new Error('Failed to fetch new releases');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching new releases:', error);
+            throw error;
+        }
     }
 }
 
