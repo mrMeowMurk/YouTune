@@ -123,12 +123,12 @@ app.get('/api/check/:id', async (req, res) => {
 // Поиск треков
 app.get('/api/search', async (req, res) => {
     try {
-        const { query } = req.query;
-        if (!query) {
+        const searchQuery = req.query.query || req.query.q;
+        if (!searchQuery) {
             return res.status(400).json({ error: 'Поисковый запрос обязателен' });
         }
 
-        const searchResults = await api.search(query, "song");
+        const searchResults = await api.search(searchQuery, "song");
         const formattedResults = await Promise.all(
             searchResults.content.map(formatTrackResponse)
         );
