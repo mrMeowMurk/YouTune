@@ -2,13 +2,13 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-class YoutubeMusicService {
+class YTMusicService {
     async checkHealth() {
         try {
             const response = await axios.get(`${API_BASE_URL}/health`);
             return response.data.status === 'ok';
         } catch (error) {
-            console.error('Ошибка проверки здоровья сервера:', error);
+            console.error('Ошибка проверки состояния сервера:', error);
             return false;
         }
     }
@@ -16,22 +16,21 @@ class YoutubeMusicService {
     async searchTracks(query) {
         try {
             const response = await axios.get(`${API_BASE_URL}/search`, {
-                params: { query }
+                params: { q: query }
             });
             return response.data;
         } catch (error) {
-            console.error('Ошибка поиска треков:', error);
+            console.error('Ошибка поиска:', error);
             throw error;
         }
     }
 
     async getTrack(id) {
         try {
-            const response = await fetch(`${API_BASE_URL}/track/${id}`);
-            if (!response.ok) throw new Error('Failed to fetch track');
-            return await response.json();
+            const response = await axios.get(`${API_BASE_URL}/track/${id}`);
+            return response.data;
         } catch (error) {
-            console.error('Error fetching track:', error);
+            console.error('Ошибка получения трека:', error);
             throw error;
         }
     }
@@ -106,4 +105,4 @@ class YoutubeMusicService {
     }
 }
 
-export const ytmusicService = new YoutubeMusicService(); 
+export const ytmusicService = new YTMusicService(); 

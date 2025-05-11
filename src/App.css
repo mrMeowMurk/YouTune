@@ -744,34 +744,129 @@ body {
 .player-controls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin: var(--spacing-md) 0;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 16px;
 }
 
 .control-button {
-  background: none;
+  width: 32px;
+  height: 32px;
   border: none;
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 24px;
   cursor: pointer;
-  padding: var(--spacing-xs);
   border-radius: 50%;
-  transition: var(--transition-default);
-  width: 40px;
-  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s var(--animation-timing);
+  position: relative;
+  padding: 0;
+}
+
+.control-button i {
+  font-size: 14px;
+  transition: all 0.3s var(--animation-timing);
 }
 
 .control-button:hover:not(:disabled) {
   color: var(--text-primary);
+  transform: scale(1.1);
   background-color: var(--background-highlight);
 }
 
 .control-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.control-button.play-pause {
+  width: 48px;
+  height: 48px;
+  background-color: var(--text-primary);
+  color: var(--background-primary);
+}
+
+.control-button.play-pause i {
+  font-size: 18px;
+}
+
+.control-button.play-pause:hover:not(:disabled) {
+  transform: scale(1.1);
+  background-color: var(--primary-color);
+  color: var(--text-primary);
+}
+
+.control-button.shuffle,
+.control-button.repeat {
+  color: var(--text-secondary);
+}
+
+.control-button.shuffle.active,
+.control-button.repeat.active {
+  color: var(--primary-color);
+}
+
+.control-button.shuffle i,
+.control-button.repeat i {
+  font-size: 12px;
+}
+
+/* Анимация для спиннера загрузки */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Добавляем эффект пульсации для активной кнопки воспроизведения */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(29, 185, 84, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(29, 185, 84, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(29, 185, 84, 0);
+  }
+}
+
+.control-button.play-pause:not(:disabled) {
+  animation: pulse 2s infinite;
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 768px) {
+  .player-controls {
+    gap: 15px;
+  }
+
+  .control-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .control-button.play-pause {
+    width: 40px;
+    height: 40px;
+  }
+
+  .control-button i {
+    font-size: 12px;
+  }
+
+  .control-button.play-pause i {
+    font-size: 16px;
+  }
 }
 
 .progress-container {

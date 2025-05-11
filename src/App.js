@@ -7,6 +7,8 @@ function App() {
   const [searchResults, setSearchResults] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,6 +23,113 @@ function App() {
   const [favoriteTracksIds, setFavoriteTracksIds] = useState(new Set());
   const audioRef = useRef(null);
   const progressRef = useRef(null);
+
+  const handleTrackSelect = useCallback(async (track, playlist = null) => {
+    try {
+      setLoading(true);
+      setError(null);
+      setIsBuffering(true);
+
+      // Обновляем текущий плейлист если он передан
+      if (playlist) {
+        setCurrentPlaylist(playlist);
+        const trackIndex = playlist.findIndex(t => t.id === track.id);
+        setCurrentTrackIndex(trackIndex);
+      }
+
+      const trackData = await ytmusicService.getTrack(track.id);
+      
+      if (!trackData) {
+        throw new Error('Не удалось получить данные трека');
+      }
+
+      // Проверяем готовность трека к воспроизведению
+      const checkResponse = await fetch(`http://localhost:5000/api/check/${track.id}`);
+      const checkData = await checkResponse.json();
+      
+      if (!checkData.ready) {
+        throw new Error('Трек не готов к воспроизведению');
+      }
+
+      const audioUrl = `http://localhost:5000/api/play/${track.id}`;
+
+      try {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+          setIsPlaying(false);
+        }
+
+        const loadAudioPromise = new Promise((resolve, reject) => {
+          const audio = audioRef.current;
+          if (!audio) {
+            reject(new Error('Аудио элемент не найден'));
+            return;
+          }
+
+          const handleCanPlay = () => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('error', handleError);
+            resolve();
+          };
+
+          const handleError = (e) => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('error', handleError);
+            reject(new Error(e.target.error?.message || 'Ошибка загрузки аудио'));
+          };
+
+          audio.addEventListener('canplay', handleCanPlay);
+          audio.addEventListener('error', handleError);
+
+          audio.src = audioUrl;
+          audio.load();
+        });
+
+        setCurrentTrack({ ...trackData, playUrl: audioUrl });
+        await loadAudioPromise;
+
+        if (audioRef.current) {
+          await audioRef.current.play();
+          setIsPlaying(true);
+          setError(null);
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке аудио:', error);
+        setError(`Ошибка при загрузке аудио: ${error.message}`);
+        if (audioRef.current) {
+          audioRef.current.src = '';
+        }
+        setIsPlaying(false);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Ошибка при выборе трека:', error);
+      setError(`Ошибка при загрузке трека: ${error.message}`);
+      setIsPlaying(false);
+    } finally {
+      setLoading(false);
+      setIsBuffering(false);
+    }
+  }, []);
+
+  // Функция для переключения на следующий трек
+  const playNextTrack = useCallback(async () => {
+    if (!currentPlaylist.length || currentTrackIndex === -1) return;
+    
+    const nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
+    setCurrentTrackIndex(nextIndex);
+    await handleTrackSelect(currentPlaylist[nextIndex]);
+  }, [currentPlaylist, currentTrackIndex, handleTrackSelect]);
+
+  // Функция для переключения на предыдущий трек
+  const playPreviousTrack = useCallback(async () => {
+    if (!currentPlaylist.length || currentTrackIndex === -1) return;
+    
+    const prevIndex = (currentTrackIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
+    setCurrentTrackIndex(prevIndex);
+    await handleTrackSelect(currentPlaylist[prevIndex]);
+  }, [currentPlaylist, currentTrackIndex, handleTrackSelect]);
 
   // Обработка темы
   useEffect(() => {
@@ -77,7 +186,11 @@ function App() {
 
     const handleEnded = () => {
       setIsPlaying(false);
-      setCurrentTrack(null);
+      if (currentPlaylist.length > 1) {
+        playNextTrack();
+      } else {
+        setCurrentTrack(null);
+      }
     };
 
     audio.addEventListener('error', handleError);
@@ -87,7 +200,7 @@ function App() {
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [currentPlaylist, playNextTrack]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -185,93 +298,6 @@ function App() {
       setLoading(false);
     }
   };
-
-  const handleTrackSelect = useCallback(async (track) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setIsBuffering(true);
-
-      const trackData = await ytmusicService.getTrack(track.id);
-      
-      if (!trackData) {
-        throw new Error('Не удалось получить данные трека');
-      }
-
-      // Проверяем готовность трека
-      const checkResponse = await fetch(`http://localhost:5000/api/check/${track.id}`);
-      const checkData = await checkResponse.json();
-      
-      if (!checkData.ready) {
-        throw new Error('Трек не готов к воспроизведению');
-      }
-
-      // Создаем аудио URL для стриминга
-      const audioUrl = `http://localhost:5000/api/play/${track.id}`;
-      console.log('Аудио URL:', audioUrl);
-
-      try {
-        // Останавливаем текущий трек
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = '';
-          setIsPlaying(false);
-        }
-
-        // Создаем промис для проверки загрузки аудио
-        const loadAudioPromise = new Promise((resolve, reject) => {
-          const audio = audioRef.current;
-          if (!audio) {
-            reject(new Error('Аудио элемент не найден'));
-            return;
-          }
-
-          const handleCanPlay = () => {
-            audio.removeEventListener('canplay', handleCanPlay);
-            audio.removeEventListener('error', handleError);
-            resolve();
-          };
-
-          const handleError = (e) => {
-            audio.removeEventListener('canplay', handleCanPlay);
-            audio.removeEventListener('error', handleError);
-            reject(new Error(e.target.error?.message || 'Ошибка загрузки аудио'));
-          };
-
-          audio.addEventListener('canplay', handleCanPlay);
-          audio.addEventListener('error', handleError);
-
-          // Устанавливаем прямой URL для стриминга
-          audio.src = audioUrl;
-          audio.load();
-        });
-
-        setCurrentTrack({ ...trackData, playUrl: audioUrl });
-        await loadAudioPromise;
-
-        if (audioRef.current) {
-          await audioRef.current.play();
-          setIsPlaying(true);
-          setError(null);
-        }
-      } catch (error) {
-        console.error('Ошибка при загрузке аудио:', error);
-        setError(`Ошибка при загрузке аудио: ${error.message}`);
-        if (audioRef.current) {
-          audioRef.current.src = '';
-        }
-        setIsPlaying(false);
-        throw error;
-      }
-    } catch (error) {
-      console.error('Ошибка при выборе трека:', error);
-      setError(`Ошибка при загрузке трека: ${error.message}`);
-      setIsPlaying(false);
-    } finally {
-      setLoading(false);
-      setIsBuffering(false);
-    }
-  }, [isPlaying]);
 
   // Добавляем очистку при размонтировании компонента
   useEffect(() => {
@@ -423,7 +449,7 @@ function App() {
             key={track.id} 
             className={`track-item ${currentTrack?.id === track.id ? 'active' : ''}`}
           >
-            <div className="track-main" onClick={() => !loading && handleTrackSelect(track)}>
+            <div className="track-main" onClick={() => !loading && handleTrackSelect(track, tracks)}>
               <img 
                 src={track.album?.images[0]?.url || '/default-album.png'} 
                 alt={track.name} 
@@ -528,6 +554,33 @@ function App() {
     }
   }, []);
 
+  // Обработчик клавиатуры
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      switch(e.code) {
+        case 'Space':
+          e.preventDefault();
+          if (currentTrack) togglePlay();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentTrack && currentPlaylist.length > 1) playPreviousTrack();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (currentTrack && currentPlaylist.length > 1) playNextTrack();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentTrack, currentPlaylist, togglePlay, playPreviousTrack, playNextTrack]);
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -540,7 +593,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${isDarkTheme ? 'dark' : 'light'}`}>
       <header className="app-header">
         <div className="header-navigation">
           <div className="header-left">
@@ -718,7 +771,60 @@ function App() {
       </main>
 
       {currentTrack && (
-        <div className="spotify-player">
+        <div className="player">
+          <div className="player-controls">
+            <button 
+              className="control-button shuffle"
+              onClick={() => {/* TODO: добавить перемешивание */}}
+              disabled={!currentPlaylist.length}
+              title="Перемешать"
+            >
+              <i className="fas fa-random"></i>
+            </button>
+
+            <button 
+              className="control-button"
+              onClick={playPreviousTrack}
+              disabled={!currentPlaylist.length || currentTrackIndex === -1}
+              title="Предыдущий трек"
+            >
+              <i className="fas fa-step-backward"></i>
+            </button>
+            
+            <button 
+              className="control-button play-pause" 
+              onClick={togglePlay}
+              disabled={loading || !currentTrack}
+              title={isPlaying ? "Пауза" : "Воспроизвести"}
+            >
+              {loading ? (
+                <i className="fas fa-spinner fa-spin"></i>
+              ) : isPlaying ? (
+                <i className="fas fa-pause"></i>
+              ) : (
+                <i className="fas fa-play"></i>
+              )}
+            </button>
+            
+            <button 
+              className="control-button"
+              onClick={playNextTrack}
+              disabled={!currentPlaylist.length || currentTrackIndex === -1}
+              title="Следующий трек"
+            >
+              <i className="fas fa-step-forward"></i>
+            </button>
+
+            <button 
+              className="control-button repeat"
+              onClick={() => {/* TODO: добавить повтор */}}
+              disabled={!currentTrack}
+              title="Повторить"
+            >
+              <i className="fas fa-redo"></i>
+            </button>
+          </div>
+          
           <div className="spotify-player-content">
             <div className="player-left">
               <img 
@@ -736,16 +842,6 @@ function App() {
             </div>
 
             <div className="player-center">
-              <div className="player-controls">
-                <button 
-                  className="control-button"
-                  onClick={togglePlay}
-                  disabled={loading || isBuffering}
-                  title={isPlaying ? "Пауза" : "Воспроизвести"}
-                >
-                  {isBuffering ? '⌛' : (isPlaying ? '⏸' : '▶')}
-                </button>
-              </div>
               <div className="progress-container">
                 <span className="time-display">{formatTime(progress)}</span>
                 <div 
@@ -802,6 +898,8 @@ function App() {
           if (isPlaying && audioRef.current?.paused) {
             audioRef.current.play().catch(error => {
               console.error('Ошибка возобновления воспроизведения:', error);
+              setError('Не удалось возобновить воспроизведение');
+              setIsPlaying(false);
             });
           }
         }}
@@ -819,7 +917,28 @@ function App() {
         onError={(e) => {
           const error = e.target.error;
           console.error('Ошибка аудио элемента:', error);
-          setError(`Ошибка воспроизведения. Попробуйте другой трек.`);
+          let errorMessage = 'Ошибка воспроизведения';
+          
+          if (error) {
+            switch (error.code) {
+              case MediaError.MEDIA_ERR_ABORTED:
+                errorMessage = 'Воспроизведение прервано';
+                break;
+              case MediaError.MEDIA_ERR_NETWORK:
+                errorMessage = 'Ошибка сети при загрузке';
+                break;
+              case MediaError.MEDIA_ERR_DECODE:
+                errorMessage = 'Ошибка декодирования аудио';
+                break;
+              case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                errorMessage = 'Формат аудио не поддерживается';
+                break;
+              default:
+                errorMessage = `Ошибка воспроизведения: ${error.message || 'неизвестная ошибка'}`;
+            }
+          }
+          
+          setError(errorMessage);
           setIsPlaying(false);
           setLoading(false);
           setIsBuffering(false);
@@ -827,9 +946,13 @@ function App() {
         onEnded={() => {
           setIsPlaying(false);
           setProgress(0);
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
+          if (currentPlaylist.length > 1) {
+            playNextTrack();
+          } else {
+            if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current.src = '';
+            }
           }
         }}
         onWaiting={() => setIsBuffering(true)}
