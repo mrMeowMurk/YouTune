@@ -1,71 +1,58 @@
-const API_URL = 'http://localhost:5000/api';
+import axios from 'axios';
 
-export const ytmusicService = {
+const API_BASE_URL = 'http://localhost:5000/api';
+
+class YoutubeMusicService {
     async checkHealth() {
         try {
-            const response = await fetch(`${API_URL}/health`);
-            const data = await response.json();
-            return data.status === 'ok';
+            const response = await axios.get(`${API_BASE_URL}/health`);
+            return response.data.status === 'ok';
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('Ошибка проверки здоровья сервера:', error);
             return false;
         }
-    },
+    }
 
     async searchTracks(query) {
         try {
-            const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Ошибка поиска');
-            }
-            
-            return data;
+            const response = await axios.get(`${API_BASE_URL}/search`, {
+                params: { query }
+            });
+            return response.data;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('Ошибка поиска треков:', error);
             throw error;
         }
-    },
-
-    async getRecommendations() {
-        try {
-            const response = await fetch(`${API_URL}/recommendations`);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Ошибка получения рекомендаций');
-            }
-            
-            return data;
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
-        }
-    },
+    }
 
     async getTrack(id) {
         try {
-            const response = await fetch(`${API_URL}/track/${id}`);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Ошибка получения информации о треке');
-            }
-            
-            return data;
+            const response = await axios.get(`${API_BASE_URL}/track/${id}`);
+            return response.data;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('Ошибка получения трека:', error);
             throw error;
         }
-    },
+    }
+
+    async getRecommendations() {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/recommendations`);
+            return response.data;
+        } catch (error) {
+            console.error('Ошибка получения рекомендаций:', error);
+            throw error;
+        }
+    }
 
     // Получение URL для воспроизведения
     async getPlayUrl(id) {
         if (!id) {
             throw new Error('ID трека обязателен');
         }
-        const { data } = await fetch(`${API_URL}/play/${id}`);
+        const { data } = await axios.get(`${API_BASE_URL}/play/${id}`);
         return data.url;
     }
-}; 
+}
+
+export const ytmusicService = new YoutubeMusicService(); 

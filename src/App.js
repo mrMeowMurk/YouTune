@@ -68,33 +68,64 @@ function App() {
     if (!audio) return;
 
     const handleTimeUpdate = () => {
-      setProgress(audio.currentTime);
-      setDuration(audio.duration);
+      const currentTime = audio.currentTime;
+      const duration = audio.duration;
+      
+      if (!isNaN(currentTime)) {
+        setProgress(currentTime);
+      }
+      
+      if (!isNaN(duration) && duration > 0) {
+        setDuration(duration);
+      }
     };
 
-    const handleLoadStart = () => {
-      setIsBuffering(true);
+    const handleLoadedMetadata = () => {
+      const duration = audio.duration;
+      if (!isNaN(duration) && duration > 0) {
+        setDuration(duration);
+        setIsBuffering(false);
+      }
     };
 
-    const handleCanPlay = () => {
+    const handleError = (e) => {
+      const error = e.target.error;
+      console.error('Ошибка аудио:', error);
+      
+      let errorMessage = 'Произошла ошибка при воспроизведении';
+      if (error) {
+        switch (error.code) {
+          case 1:
+            errorMessage = 'Загрузка медиа прервана';
+            break;
+          case 2:
+            errorMessage = 'Ошибка сети при загрузке медиа';
+            break;
+          case 3:
+            errorMessage = 'Ошибка декодирования медиа';
+            break;
+          case 4:
+            errorMessage = 'Медиа источник не поддерживается';
+            break;
+          default:
+            errorMessage = `Ошибка воспроизведения: ${error.message}`;
+        }
+      }
+      
+      setError(errorMessage);
+      setIsPlaying(false);
+      setLoading(false);
       setIsBuffering(false);
     };
 
-    const handleVolumeChange = () => {
-      setVolume(audio.volume);
-      setIsMuted(audio.muted);
-    };
-
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadstart', handleLoadStart);
-    audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('volumechange', handleVolumeChange);
-
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('error', handleError);
+    
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadstart', handleLoadStart);
-      audio.removeEventListener('canplay', handleCanPlay);
-      audio.removeEventListener('volumechange', handleVolumeChange);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('error', handleError);
     };
   }, []);
 
@@ -131,93 +162,100 @@ function App() {
 
   const handleTrackSelect = useCallback(async (track) => {
     try {
-        setLoading(true);
-        setError(null);
+      setLoading(true);
+      setError(null);
+      setIsBuffering(true);
 
+      const trackData = await ytmusicService.getTrack(track.id);
+      
+      if (!trackData) {
+        throw new Error('Не удалось получить данные трека');
+      }
+
+      // Проверяем готовность трека
+      const checkResponse = await fetch(`http://localhost:5000/api/check/${track.id}`);
+      const checkData = await checkResponse.json();
+      
+      if (!checkData.ready) {
+        throw new Error('Трек не готов к воспроизведению');
+      }
+
+      // Создаем аудио URL для стриминга
+      const audioUrl = `http://localhost:5000/api/play/${track.id}`;
+      console.log('Аудио URL:', audioUrl);
+
+      try {
         // Останавливаем текущий трек
         if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = '';
-            setIsPlaying(false);
+          audioRef.current.pause();
+          audioRef.current.src = '';
+          setIsPlaying(false);
         }
 
-        const trackData = await ytmusicService.getTrack(track.id);
-        
-        // Создаем URL для потокового воспроизведения
-        const audioUrl = `http://localhost:5000/api/play/${track.id}`;
-        
+        // Создаем промис для проверки загрузки аудио
+        const loadAudioPromise = new Promise((resolve, reject) => {
+          const audio = audioRef.current;
+          if (!audio) {
+            reject(new Error('Аудио элемент не найден'));
+            return;
+          }
+
+          const handleCanPlay = () => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('error', handleError);
+            resolve();
+          };
+
+          const handleError = (e) => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('error', handleError);
+            reject(new Error(e.target.error?.message || 'Ошибка загрузки аудио'));
+          };
+
+          audio.addEventListener('canplay', handleCanPlay);
+          audio.addEventListener('error', handleError);
+
+          // Устанавливаем прямой URL для стриминга
+          audio.src = audioUrl;
+          audio.load();
+        });
+
         setCurrentTrack({ ...trackData, playUrl: audioUrl });
-        
+        await loadAudioPromise;
+
         if (audioRef.current) {
-            // Настраиваем аудио элемент
-            audioRef.current.src = audioUrl;
-            
-            // Устанавливаем обработчики событий
-            const handleCanPlay = () => {
-                console.log('Аудио готово к воспроизведению');
-                audioRef.current.play()
-                    .then(() => {
-                        setIsPlaying(true);
-                        setError(null);
-                    })
-                    .catch(error => {
-                        console.error('Ошибка воспроизведения:', error);
-                        setError('Не удалось начать воспроизведение. Попробуйте еще раз.');
-                        setIsPlaying(false);
-                    });
-            };
-
-            const handleWaiting = () => {
-                console.log('Буферизация...');
-                setLoading(true);
-            };
-
-            const handlePlaying = () => {
-                console.log('Воспроизведение началось');
-                setLoading(false);
-            };
-
-            const handleLoadStart = () => {
-                console.log('Начало загрузки аудио');
-                setLoading(true);
-            };
-
-            const handleProgress = () => {
-                if (audioRef.current.buffered.length > 0) {
-                    const bufferedEnd = audioRef.current.buffered.end(audioRef.current.buffered.length - 1);
-                    const duration = audioRef.current.duration;
-                    console.log(`Загружено ${Math.round((bufferedEnd / duration) * 100)}%`);
-                }
-            };
-
-            audioRef.current.addEventListener('canplay', handleCanPlay);
-            audioRef.current.addEventListener('waiting', handleWaiting);
-            audioRef.current.addEventListener('playing', handlePlaying);
-            audioRef.current.addEventListener('loadstart', handleLoadStart);
-            audioRef.current.addEventListener('progress', handleProgress);
-
-            // Загружаем аудио
-            audioRef.current.load();
-
-            // Очистка обработчиков
-            return () => {
-                if (audioRef.current) {
-                    audioRef.current.removeEventListener('canplay', handleCanPlay);
-                    audioRef.current.removeEventListener('waiting', handleWaiting);
-                    audioRef.current.removeEventListener('playing', handlePlaying);
-                    audioRef.current.removeEventListener('loadstart', handleLoadStart);
-                    audioRef.current.removeEventListener('progress', handleProgress);
-                }
-            };
+          await audioRef.current.play();
+          setIsPlaying(true);
+          setError(null);
         }
-    } catch (error) {
-        console.error('Ошибка воспроизведения трека:', error);
-        setError('Ошибка воспроизведения трека: ' + (error.message || 'Неизвестная ошибка'));
+      } catch (error) {
+        console.error('Ошибка при загрузке аудио:', error);
+        setError(`Ошибка при загрузке аудио: ${error.message}`);
+        if (audioRef.current) {
+          audioRef.current.src = '';
+        }
         setIsPlaying(false);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Ошибка при выборе трека:', error);
+      setError(`Ошибка при загрузке трека: ${error.message}`);
+      setIsPlaying(false);
     } finally {
-        setLoading(false);
+      setLoading(false);
+      setIsBuffering(false);
     }
-}, []);
+  }, [isPlaying]);
+
+  // Добавляем очистку при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
+  }, []);
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current || loading) return;
@@ -241,25 +279,32 @@ function App() {
     }
   }, [isPlaying, loading]);
 
-  const formatTime = (time) => {
-    if (!time) return '0:00';
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
+  const formatTime = (timeInSeconds) => {
+    if (!timeInSeconds || isNaN(timeInSeconds)) return '0:00';
+    
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleProgressClick = (e) => {
-    if (!audioRef.current || !progressRef.current) return;
+  const handleProgressClick = useCallback((e) => {
+    if (!audioRef.current || !progressRef.current || loading || isBuffering) return;
     
-    const rect = progressRef.current.getBoundingClientRect();
+    const progressBar = progressRef.current;
+    const rect = progressBar.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const width = rect.width;
-    const percentage = x / width;
+    const percentage = Math.max(0, Math.min(1, x / width));
     const newTime = percentage * audioRef.current.duration;
     
-    audioRef.current.currentTime = newTime;
-    setProgress(newTime);
-  };
+    try {
+      audioRef.current.currentTime = newTime;
+      setProgress(newTime);
+    } catch (error) {
+      console.error('Ошибка при перемотке:', error);
+      setError('Не удалось выполнить перемотку. Попробуйте позже.');
+    }
+  }, [loading, isBuffering]);
 
   const handleVolumeChange = (e) => {
     const newVolume = parseFloat(e.target.value);
@@ -309,6 +354,16 @@ function App() {
     </div>
   ), [currentTrack, loading, isPlaying, handleTrackSelect]);
 
+  // Компонент для отображения ошибок
+  const ErrorMessage = ({ message }) => (
+    <div className="error-message">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <span>{message}</span>
+    </div>
+  );
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -340,12 +395,7 @@ function App() {
       </header>
 
       <main className="main-content">
-        {error && (
-          <div className="error-message" onClick={() => setError(null)}>
-            {error}
-            <span className="error-close">×</span>
-          </div>
-        )}
+        {error && <ErrorMessage message={error} />}
         
         {loading && <div className="loading">Загрузка...</div>}
         
@@ -394,20 +444,32 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div 
-                className="progress-bar" 
-                ref={progressRef}
-                onClick={handleProgressClick}
-              >
-                <div 
-                  className="progress-bar-fill" 
-                  style={{ width: `${(progress / duration) * 100}%` }}
-                />
-                <div className="progress-bar-hover" />
-              </div>
-              <div className="time-info">
-                <span>{formatTime(progress)}</span>
-                <span>{formatTime(duration)}</span>
+              <div className="player-controls">
+                <div className="progress-container">
+                  <div className="time-display" title="Текущее время">
+                    {formatTime(progress)}
+                  </div>
+                  <div 
+                    className="progress-bar" 
+                    ref={progressRef}
+                    onClick={handleProgressClick}
+                    style={{ 
+                      cursor: loading || isBuffering ? 'not-allowed' : 'pointer',
+                      opacity: loading || isBuffering ? 0.6 : 1
+                    }}
+                  >
+                    <div 
+                      className="progress-fill" 
+                      style={{ 
+                        width: `${duration > 0 ? (progress / duration) * 100 : 0}%`,
+                        transition: isBuffering ? 'none' : 'width 0.1s linear'
+                      }}
+                    />
+                  </div>
+                  <div className="time-display" title="Общая длительность">
+                    {formatTime(duration)}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -415,17 +477,78 @@ function App() {
 
         <audio
           ref={audioRef}
+          preload="metadata"
+          onLoadStart={() => {
+            setIsBuffering(true);
+            setError(null);
+          }}
+          onLoadedMetadata={(e) => {
+            const duration = e.target.duration;
+            if (!isNaN(duration) && duration > 0) {
+              setDuration(duration);
+            }
+          }}
+          onCanPlayThrough={() => {
+            setIsBuffering(false);
+            if (isPlaying && audioRef.current?.paused) {
+              audioRef.current.play().catch(error => {
+                console.error('Ошибка возобновления воспроизведения:', error);
+              });
+            }
+          }}
+          onPlaying={() => {
+            setIsBuffering(false);
+            setIsPlaying(true);
+            setError(null);
+          }}
+          onTimeUpdate={(e) => {
+            const currentTime = e.target.currentTime;
+            const duration = e.target.duration;
+            if (!isNaN(currentTime)) {
+              setProgress(currentTime);
+            }
+            if (!isNaN(duration) && duration > 0) {
+              setDuration(duration);
+            }
+          }}
           onError={(e) => {
-            console.error('Ошибка аудио элемента:', e.target.error);
-            setError('Ошибка воспроизведения. Попробуйте другой трек.');
+            const error = e.target.error;
+            if (error) {
+              console.error('Ошибка аудио элемента:', error);
+              if (!isPlaying) {
+                let errorMessage = 'Ошибка воспроизведения';
+                switch (error.code) {
+                  case 1:
+                    errorMessage = 'Загрузка прервана';
+                    break;
+                  case 2:
+                    errorMessage = 'Ошибка сети';
+                    break;
+                  case 3:
+                    errorMessage = 'Ошибка декодирования';
+                    break;
+                  case 4:
+                    errorMessage = 'Формат не поддерживается';
+                    break;
+                }
+                setError(`${errorMessage}. Попробуйте другой трек.`);
+              }
+            }
             setIsPlaying(false);
             setLoading(false);
+            setIsBuffering(false);
           }}
           onEnded={() => {
             setIsPlaying(false);
-            setCurrentTrack(null);
+            setProgress(0);
+            // Очищаем при размонтировании компонента
+            if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current.src = '';
+            }
           }}
-          preload="auto"
+          onWaiting={() => setIsBuffering(true)}
+          onStalled={() => setIsBuffering(true)}
         />
       </main>
 
