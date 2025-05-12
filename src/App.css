@@ -793,13 +793,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: var(--spacing-md);
   margin-bottom: -15px;
 }
 
 .control-button {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -832,8 +832,9 @@ body {
 .control-button.play-pause {
   width: 42px;
   height: 42px;
-  background-color: var(--text-primary);
-  color: var(--background-primary);
+  background: var(--primary-color);
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
 }
 
 .control-button.play-pause i {
@@ -842,26 +843,39 @@ body {
 
 .control-button.play-pause:hover:not(:disabled) {
   transform: scale(1.1);
-  background-color: var(--primary-color);
-  color: var(--text-primary);
-}
-
-.control-button.shuffle,
-.control-button.repeat {
-  color: var(--text-secondary);
+  background: var(--primary-dark);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
 }
 
 .control-button.shuffle.active,
 .control-button.repeat.active {
   color: var(--primary-color);
+  background-color: rgba(29, 185, 84, 0.1);
 }
 
 .control-button.shuffle i,
 .control-button.repeat i {
-  font-size: 12px;
+  font-size: 14px;
 }
 
-/* Анимация для спиннера загрузки */
+/* Добавляем эффект пульсации для активной кнопки воспроизведения */
+@keyframes playPulse {
+  0% {
+    box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(29, 185, 84, 0.5);
+  }
+  100% {
+    box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  }
+}
+
+.control-button.play-pause:not(:disabled) {
+  animation: playPulse 2s infinite;
+}
+
+/* Добавляем эффект загрузки */
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -871,41 +885,49 @@ body {
   }
 }
 
-.fa-spinner {
+.control-button .fa-spinner {
   animation: spin 1s linear infinite;
 }
 
-/* Добавляем эффект пульсации для активной кнопки воспроизведения */
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(29, 185, 84, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(29, 185, 84, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(29, 185, 84, 0);
-  }
+/* Добавляем тултипы для кнопок */
+.control-button::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--background-elevation);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.control-button.play-pause:not(:disabled) {
-  animation: pulse 2s infinite;
+.control-button:hover::after {
+  opacity: 1;
+  visibility: visible;
+  bottom: -35px;
 }
 
 /* Медиа-запросы для адаптивности */
 @media (max-width: 768px) {
   .player-controls {
-    gap: 15px;
+    gap: 12px;
   }
 
   .control-button {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
   }
 
   .control-button.play-pause {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
   }
 
   .control-button i {
@@ -914,6 +936,10 @@ body {
 
   .control-button.play-pause i {
     font-size: 16px;
+  }
+
+  .control-button::after {
+    display: none; /* Скрываем тултипы на мобильных */
   }
 }
 
@@ -1593,7 +1619,7 @@ body {
 
 .player-left .current-track-image {
   width: 56px;
-  height: 56px;
+  height: 50px;
   border-radius: 4px;
   object-fit: cover;
 }
@@ -1639,7 +1665,6 @@ body {
 .control-button {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
   border: none;
   background: var(--text-primary);
   color: var(--background-primary);
@@ -2117,7 +2142,7 @@ body {
   position: fixed;
   top: 64px;
   right: 0;
-  width: 300px;
+  width: 350px;
   height: calc(100vh - 64px); /* Учитываем высоту хедера и плеера */
   background-color: var(--background-elevation);
   border-left: 1px solid var(--background-highlight);
@@ -2173,7 +2198,7 @@ body {
 
 /* Измененная структура контента, чтобы учесть боковую панель */
 .main-content {
-  margin-right: 300px;
+  margin-right: 350px;
   transition: margin 0.3s ease;
   max-width: calc(100% - 300px);
 }
@@ -2351,7 +2376,7 @@ body {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   box-shadow: var(--shadow-elevation);
 }
 
@@ -2540,4 +2565,57 @@ body {
   color: var(--text-secondary);
   font-size: 12px;
   white-space: nowrap;
+}
+
+.share-notification {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--primary-color);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  animation: slideUp 0.3s ease, fadeOut 0.3s ease 1.7s forwards;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 20px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Добавляем эффект при нажатии на кнопку поделиться */
+.preview-action-button.sharing {
+  animation: pulse 0.3s ease;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }

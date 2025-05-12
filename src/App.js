@@ -22,9 +22,10 @@ function App() {
   const [favoriteTracksCount, setFavoriteTracksCount] = useState(0);
   const [favoriteTracksIds, setFavoriteTracksIds] = useState(new Set());
   const [artistInfo, setArtistInfo] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
+  const [currentView, setCurrentView] = useState('default'); // 'default', 'favorites', 'search'
   const audioRef = useRef(null);
   const progressRef = useRef(null);
-  const [viewMode, setViewMode] = useState('list');
 
   const handleTrackSelect = useCallback(async (track, playlist = null) => {
     try {
@@ -291,6 +292,7 @@ function App() {
     try {
       setLoading(true);
       setError(null);
+      setCurrentView('search');
       const data = await ytmusicService.searchTracks(searchQuery);
       setSearchResults(data);
     } catch (error) {
@@ -555,12 +557,12 @@ function App() {
     }
   }, [recommendations, handleTrackSelect]);
 
-  // Функция для загрузки любимых треков
+  // Обновляем функцию загрузки любимых треков
   const loadFavoriteTracks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      // Здесь будет запрос к API для получения любимых треков
+      setCurrentView('favorites');
       const response = await ytmusicService.getFavoriteTracks();
       setSearchResults(response);
       setFavoriteTracksCount(response.length);
@@ -734,6 +736,41 @@ function App() {
     const nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
     return currentPlaylist[nextIndex];
   }, [currentPlaylist, currentTrackIndex]);
+
+  // Добавляем функцию для шаринга
+  const handleShare = useCallback(async (track) => {
+    if (!track) return;
+
+    const shareData = {
+      title: track.name,
+      text: `${track.name} - ${track.artists.map(artist => artist.name).join(', ')}`,
+      url: track.shareUrl || window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Если Web Share API недоступен, копируем текст в буфер обмена
+        const shareText = `${shareData.title} - ${track.artists.map(artist => artist.name).join(', ')}`;
+        await navigator.clipboard.writeText(shareText);
+        
+        // Показываем уведомление об успешном копировании
+        const notification = document.createElement('div');
+        notification.className = 'share-notification';
+        notification.textContent = 'Скопировано в буфер обмена';
+        document.body.appendChild(notification);
+        
+        // Удаляем уведомление через 2 секунды
+        setTimeout(() => {
+          notification.remove();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Ошибка при попытке поделиться:', error);
+      setError('Не удалось поделиться треком');
+    }
+  }, []);
 
   if (!serverStatus) {
     return (
@@ -924,12 +961,12 @@ function App() {
 
             {searchResults && searchResults.length > 0 ? (
               viewMode === 'list' 
-                ? renderTrackList(searchResults, 'Результаты поиска')
-                : renderTrackCards(searchResults, 'Результаты поиска')
+                ? renderTrackList(searchResults, currentView === 'favorites' ? 'Избранное' : 'Результаты поиска')
+                : renderTrackCards(searchResults, currentView === 'favorites' ? 'Избранное' : 'Результаты поиска')
             ) : searchResults !== null && (
               viewMode === 'list'
-                ? renderTrackList([], 'Любимые треки')
-                : renderTrackCards([], 'Любимые треки')
+                ? renderTrackList([], currentView === 'favorites' ? 'Избранное' : 'Результаты поиска')
+                : renderTrackCards([], currentView === 'favorites' ? 'Избранное' : 'Результаты поиска')
             )}
             
             {!searchResults?.length && recommendations.length > 0 && (
@@ -1099,6 +1136,7 @@ function App() {
                     </button>
                     <button 
                       className="preview-action-button"
+                      onClick={() => handleShare(currentTrack)}
                       title="Поделиться"
                     >
                       <i className="fas fa-share-alt"></i>
