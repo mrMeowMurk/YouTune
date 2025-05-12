@@ -1074,6 +1074,23 @@ function App() {
             </div>
 
             <div className="player-right">
+              <div className="player-right-controls">
+                <button 
+                  className="player-button"
+                  title="Текст песни"
+                  onClick={() => {/* TODO: добавить функционал показа текста */}}
+                >
+                  <i className="fas fa-microphone-alt"></i>
+                </button>
+                <div className="player-controls-divider"></div>
+                <button 
+                  className="player-button"
+                  title="Во весь экран"
+                  onClick={() => {/* TODO: добавить функционал полноэкранного режима */}}
+                >
+                  <i className="fas fa-expand"></i>
+                </button>
+              </div>
               <div className="volume-control">
                 <button onClick={toggleMute} className="volume-button">
                   {isMuted ? (
