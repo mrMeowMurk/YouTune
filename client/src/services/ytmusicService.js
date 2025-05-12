@@ -128,13 +128,12 @@ class YTMusicService {
 
     async getLyrics(trackId) {
         try {
-            // Проверяем кэш
             if (this.#lyricsCache.has(trackId)) {
                 return this.#lyricsCache.get(trackId);
             }
 
             const response = await axios.get(`${API_BASE_URL}/lyrics/${trackId}`, {
-                timeout: 10000 // Устанавливаем таймаут в 10 секунд
+                timeout: 10000
             });
 
             if (!response.data || !response.data.lyrics) {
@@ -143,7 +142,6 @@ class YTMusicService {
 
             const { lyrics, source } = response.data;
 
-            // Кэшируем результат только если это не ошибка и не "не найдено"
             if (source === 'lyrics.ovh') {
                 this.#lyricsCache.set(trackId, { lyrics, source });
             }
