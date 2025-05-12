@@ -1845,3 +1845,199 @@ body {
     transform: scale(1);
   }
 }
+
+/* Стили для переключателя вида */
+.view-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-md);
+  padding: 0 var(--spacing-lg);
+}
+
+.view-toggle {
+  display: flex;
+  align-items: center;
+  background: var(--background-secondary);
+  border-radius: 20px;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--background-highlight);
+  box-shadow: var(--shadow-elevation);
+}
+
+.view-toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 16px;
+  transition: all 0.3s var(--animation-timing);
+  font-size: 14px;
+  gap: 8px;
+}
+
+.view-toggle-button.active {
+  background: var(--primary-color);
+  color: var(--text-primary);
+  transform: scale(1.02);
+}
+
+.view-toggle-button:hover:not(.active) {
+  background: var(--background-highlight);
+  color: var(--text-primary);
+}
+
+.view-toggle-button i {
+  font-size: 16px;
+}
+
+/* Стили для отображения карточками */
+.tracks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+}
+
+.track-card {
+  background: var(--background-secondary);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  transition: all 0.3s var(--animation-timing);
+  position: relative;
+  cursor: pointer;
+  box-shadow: var(--shadow-elevation);
+}
+
+.track-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.track-card.active {
+  border: 2px solid var(--primary-color);
+}
+
+.track-card-image-container {
+  position: relative;
+  padding-top: 100%;
+  overflow: hidden;
+}
+
+.track-card-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s var(--animation-timing);
+}
+
+.track-card:hover .track-card-image {
+  transform: scale(1.05);
+}
+
+.track-card-content {
+  padding: var(--spacing-md);
+}
+
+.track-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-card-artist {
+  font-size: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s var(--animation-timing);
+}
+
+.track-card:hover .track-card-overlay {
+  opacity: 1;
+}
+
+.track-card-play {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-size: 24px;
+  transform: scale(0.8);
+  transition: all 0.3s var(--animation-timing);
+}
+
+.track-card:hover .track-card-play {
+  transform: scale(1);
+}
+
+.track-card-favorite {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s var(--animation-timing);
+  z-index: 2;
+}
+
+.track-card-favorite:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .tracks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .view-toggle-container {
+    justify-content: center;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .view-toggle-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

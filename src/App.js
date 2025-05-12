@@ -23,6 +23,7 @@ function App() {
   const [favoriteTracksIds, setFavoriteTracksIds] = useState(new Set());
   const audioRef = useRef(null);
   const progressRef = useRef(null);
+  const [viewMode, setViewMode] = useState('list');
 
   const handleTrackSelect = useCallback(async (track, playlist = null) => {
     try {
@@ -581,6 +582,69 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [currentTrack, currentPlaylist, togglePlay, playPreviousTrack, playNextTrack]);
 
+  // Add this new component function before the renderTrackList function
+  const renderTrackCards = useCallback((tracks, title) => (
+    <div className="track-list">
+      <h2>{title}</h2>
+      {tracks.length === 0 ? (
+        <div className="empty-list-message">
+          <span className="empty-icon">💔</span>
+          <p>Список пуст</p>
+          {title === 'Любимые треки' && (
+            <p className="empty-description">
+              Нажмите на сердечко рядом с треком, чтобы добавить его в избранное
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="tracks-grid">
+          {tracks.map(track => (
+            <div 
+              key={track.id} 
+              className={`track-card ${currentTrack?.id === track.id ? 'active' : ''}`}
+            >
+              <div className="track-card-image-container">
+                <img 
+                  src={track.album?.images[0]?.url || '/default-album.png'} 
+                  alt={track.name} 
+                  className="track-card-image"
+                  onError={(e) => {
+                    e.target.src = '/default-album.png';
+                  }}
+                />
+                <div className="track-card-overlay" onClick={() => !loading && handleTrackSelect(track, tracks)}>
+                  <div className="track-card-play">
+                    {currentTrack?.id === track.id && isPlaying ? (
+                      <i className="fas fa-pause"></i>
+                    ) : (
+                      <i className="fas fa-play"></i>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  className="track-card-favorite"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(track.id);
+                  }}
+                  disabled={loading}
+                >
+                  {favoriteTracksIds.has(track.id) ? '❤️' : '🤍'}
+                </button>
+              </div>
+              <div className="track-card-content">
+                <h3 className="track-card-title">{track.name}</h3>
+                <p className="track-card-artist">
+                  {track.artists.map(artist => artist.name).join(', ')}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite]);
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -749,23 +813,40 @@ function App() {
         
         {!loading && (
           <>
-            {searchResults && searchResults.length > 0 ? (
-              renderTrackList(searchResults, 'Результаты поиска')
-            ) : searchResults !== null && (
-              <div className="track-list">
-                <h2>Любимые треки</h2>
-                <div className="empty-list-message">
-                  <span className="empty-icon">💔</span>
-                  <p>Список любимых треков пуст</p>
-                  <p className="empty-description">
-                    Нажмите на сердечко рядом с треком, чтобы добавить его в избранное
-                  </p>
-                </div>
+            <div className="view-toggle-container">
+              <div className="view-toggle">
+                <button 
+                  className={`view-toggle-button ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                >
+                  <i className="fas fa-list"></i>
+                  Список
+                </button>
+                <button 
+                  className={`view-toggle-button ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                >
+                  <i className="fas fa-th"></i>
+                  Плитка
+                </button>
               </div>
+            </div>
+
+            {searchResults && searchResults.length > 0 ? (
+              viewMode === 'list' 
+                ? renderTrackList(searchResults, 'Результаты поиска')
+                : renderTrackCards(searchResults, 'Результаты поиска')
+            ) : searchResults !== null && (
+              viewMode === 'list'
+                ? renderTrackList([], 'Любимые треки')
+                : renderTrackCards([], 'Любимые треки')
             )}
             
-            {!searchResults?.length && recommendations.length > 0 && 
-              renderTrackList(recommendations, 'Рекомендации')}
+            {!searchResults?.length && recommendations.length > 0 && (
+              viewMode === 'list'
+                ? renderTrackList(recommendations, 'Рекомендации')
+                : renderTrackCards(recommendations, 'Рекомендации')
+            )}
           </>
         )}
       </main>
