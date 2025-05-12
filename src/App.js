@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ytmusicService } from './services/ytmusicService';
+import defaultAlbumImage from './assets/default-album.png';
 import './App.css';
 
 function App() {
@@ -365,8 +366,8 @@ function App() {
     return 0;
   }, []);
 
-  const handleProgressClick = useCallback((e) => {
-    if (!audioRef.current || !progressRef.current || loading || isBuffering) return;
+  const handleProgressHover = useCallback((e) => {
+    if (!audioRef.current || !progressRef.current) return;
     
     const progressBar = progressRef.current;
     const rect = progressBar.getBoundingClientRect();
@@ -478,11 +479,11 @@ function App() {
             <span className="track-number">{index + 1}</span>
             <div className="track-main" onClick={() => !loading && handleTrackSelect(track, tracks)}>
               <img 
-                src={track.album?.images[0]?.url || '/default-album.png'} 
+                src={track.album?.images[0]?.url || defaultAlbumImage} 
                 alt={track.name} 
                 className="track-image"
                 onError={(e) => {
-                  e.target.src = '/default-album.png';
+                  e.target.src = defaultAlbumImage;
                 }}
               />
               <div className="track-info">
@@ -641,11 +642,11 @@ function App() {
             >
               <div className="track-card-image-container">
                 <img 
-                  src={track.album?.images[0]?.url || '/default-album.png'} 
+                  src={track.album?.images[0]?.url || defaultAlbumImage} 
                   alt={track.name} 
                   className="track-card-image"
                   onError={(e) => {
-                    e.target.src = '/default-album.png';
+                    e.target.src = defaultAlbumImage;
                   }}
                 />
                 <div className="track-card-overlay" onClick={() => !loading && handleTrackSelect(track, tracks)}>
@@ -782,6 +783,38 @@ function App() {
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev);
   }, []);
+
+  // Обработчик для обычного прогресс-бара
+  const handleProgressClick = useCallback((e) => {
+    if (!audioRef.current || !progressRef.current || loading || isBuffering) return;
+    
+    const progressBar = progressRef.current;
+    const rect = progressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const percentage = clickPosition / rect.width;
+    
+    if (percentage >= 0 && percentage <= 1) {
+      const newTime = percentage * audioRef.current.duration;
+      audioRef.current.currentTime = newTime;
+      setProgress(newTime);
+    }
+  }, [loading, isBuffering]);
+
+  // Обработчик для полноэкранного прогресс-бара
+  const handleFullscreenProgressClick = useCallback((e) => {
+    if (!audioRef.current || loading || isBuffering) return;
+    
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const percentage = clickPosition / rect.width;
+    
+    if (percentage >= 0 && percentage <= 1) {
+      const newTime = percentage * audioRef.current.duration;
+      audioRef.current.currentTime = newTime;
+      setProgress(newTime);
+    }
+  }, [loading, isBuffering]);
 
   if (!serverStatus) {
     return (
@@ -1047,11 +1080,11 @@ function App() {
           <div className="spotify-player-content">
             <div className="player-left">
               <img 
-                src={currentTrack.album?.images[0]?.url || '/default-album.png'} 
+                src={currentTrack.album?.images[0]?.url || defaultAlbumImage} 
                 alt={currentTrack.name}
                 className="current-track-image"
                 onError={(e) => {
-                  e.target.src = '/default-album.png';
+                  e.target.src = defaultAlbumImage;
                 }}
               />
               <div className="current-track-info">
@@ -1142,6 +1175,9 @@ function App() {
                       src={currentTrack.album.images[0].url} 
                       alt={currentTrack.name} 
                       className="preview-track-image"
+                      onError={(e) => {
+                        e.target.src = defaultAlbumImage;
+                      }}
                     />
                   ) : (
                     <div className="preview-track-placeholder">
@@ -1243,6 +1279,9 @@ function App() {
                   src={getNextTrack().album.images[0].url} 
                   alt={getNextTrack().name} 
                   className="next-track-image"
+                  onError={(e) => {
+                    e.target.src = defaultAlbumImage;
+                  }}
                 />
               ) : (
                 <div className="next-track-placeholder-icon">
@@ -1360,17 +1399,16 @@ function App() {
         <div className="fullscreen-header">
           <div className="fullscreen-back" onClick={() => setIsFullscreen(false)}>
             <i className="fas fa-chevron-down"></i>
-            <span>Свернуть</span>
           </div>
         </div>
         
         <div className="fullscreen-content">
           <div className="fullscreen-artwork">
             <img 
-              src={currentTrack?.album?.images[0]?.url || '/default-album.png'} 
+              src={currentTrack?.album?.images[0]?.url || defaultAlbumImage} 
               alt={currentTrack?.name}
               onError={(e) => {
-                e.target.src = '/default-album.png';
+                e.target.src = defaultAlbumImage;
               }}
             />
           </div>
@@ -1390,7 +1428,7 @@ function App() {
                   <div 
                     className="progress-bar" 
                     ref={progressRef}
-                    onClick={handleProgressClick}
+                    onClick={handleFullscreenProgressClick}
                   >
                     <div 
                       className="progress-fill" 
@@ -1454,6 +1492,34 @@ function App() {
                   <i className="fas fa-redo"></i>
                 </button>
               </div>
+            </div>
+
+            <div className="fullscreen-volume-control">
+              <button 
+                className="fullscreen-volume-button"
+                onClick={toggleMute}
+                title={isMuted ? "Включить звук" : "Выключить звук"}
+              >
+                {isMuted ? (
+                  <i className="fas fa-volume-mute"></i>
+                ) : volume > 0.5 ? (
+                  <i className="fas fa-volume-up"></i>
+                ) : volume > 0 ? (
+                  <i className="fas fa-volume-down"></i>
+                ) : (
+                  <i className="fas fa-volume-off"></i>
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="fullscreen-volume-slider"
+                title="Громкость"
+              />
             </div>
           </div>
         </div>

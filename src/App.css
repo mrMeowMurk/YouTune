@@ -2214,6 +2214,7 @@ body {
   opacity: 0;
   transform: translateY(-10px);
   backdrop-filter: blur(4px);
+  color: var(--text-secondary);
 }
 
 .track-card:hover .track-card-favorite {
@@ -2223,7 +2224,36 @@ body {
 
 .track-card-favorite:hover {
   transform: scale(1.1) !important;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--primary-dark);
+  color: var(--text-primary);
+}
+
+.track-card-favorite.active {
+  color: var(--primary-color);
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.track-card-favorite.active:hover {
+  background: var(--primary-dark);
+  color: var(--text-primary);
+}
+
+/* Добавляем анимацию для активного состояния */
+@keyframes heartBeat {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.track-card-favorite.active i {
+  animation: heartBeat 0.3s var(--animation-timing);
 }
 
 .track-card-content {
@@ -3155,5 +3185,96 @@ body {
 
   .fullscreen-play-button i {
     font-size: 24px;
+  }
+}
+
+.fullscreen-volume-control {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.fullscreen-volume-button {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s var(--animation-timing);
+}
+
+.fullscreen-volume-button:hover {
+  color: var(--text-primary);
+  background: var(--background-highlight);
+}
+
+.fullscreen-volume-button i {
+  font-size: 20px;
+}
+
+.fullscreen-volume-slider {
+  width: 150px;
+  height: 4px;
+  -webkit-appearance: none;
+  background-color: var(--background-secondary);
+  border-radius: 2px;
+  outline: none;
+  transition: all 0.2s var(--animation-timing);
+}
+
+.fullscreen-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s var(--animation-timing);
+  border: 2px solid var(--background-primary);
+}
+
+.fullscreen-volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background-color: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s var(--animation-timing);
+  border: 2px solid var(--background-primary);
+}
+
+.fullscreen-volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-volume-slider:hover::-moz-range-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Добавляем адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .fullscreen-volume-control {
+    margin-top: var(--spacing-md);
+  }
+
+  .fullscreen-volume-slider {
+    width: 120px;
+  }
+
+  .fullscreen-volume-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .fullscreen-volume-button i {
+    font-size: 18px;
   }
 }
