@@ -1997,31 +1997,46 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--spacing-lg);
   padding: var(--spacing-lg);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .track-card {
   background: var(--background-secondary);
   border-radius: var(--border-radius);
   overflow: hidden;
-  transition: all 0.3s var(--animation-timing);
+  transition: all 0.4s var(--animation-timing);
   position: relative;
   cursor: pointer;
   box-shadow: var(--shadow-elevation);
+  isolation: isolate;
 }
 
 .track-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 16px 24px rgba(0, 0, 0, 0.3);
 }
 
 .track-card.active {
   border: 2px solid var(--primary-color);
+  box-shadow: 0 0 20px rgba(29, 185, 84, 0.3);
 }
 
 .track-card-image-container {
   position: relative;
   padding-top: 100%;
   overflow: hidden;
+  background: linear-gradient(45deg, var(--background-primary), var(--background-secondary));
 }
 
 .track-card-image {
@@ -2031,15 +2046,100 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s var(--animation-timing);
+  transition: transform 0.5s var(--animation-timing);
+  will-change: transform;
 }
 
 .track-card:hover .track-card-image {
-  transform: scale(1.05);
+  transform: scale(1.1);
+}
+
+.track-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s var(--animation-timing);
+  backdrop-filter: blur(2px);
+}
+
+.track-card:hover .track-card-overlay {
+  opacity: 1;
+}
+
+.track-card-play {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-size: 24px;
+  transform: scale(0.8) translateY(20px);
+  transition: all 0.4s var(--animation-timing);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.track-card:hover .track-card-play {
+  transform: scale(1) translateY(0);
+}
+
+.track-card-play:hover {
+  transform: scale(1.1) !important;
+  background: var(--primary-dark);
+}
+
+.track-card-favorite {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s var(--animation-timing);
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(-10px);
+  backdrop-filter: blur(4px);
+}
+
+.track-card:hover .track-card-favorite {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.track-card-favorite:hover {
+  transform: scale(1.1) !important;
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .track-card-content {
   padding: var(--spacing-md);
+  background: linear-gradient(
+    to bottom,
+    var(--background-secondary),
+    var(--background-elevation)
+  );
+  position: relative;
 }
 
 .track-card-title {
@@ -2050,6 +2150,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
+  transition: color 0.3s ease;
+}
+
+.track-card:hover .track-card-title {
+  color: var(--primary-color);
 }
 
 .track-card-artist {
@@ -2058,64 +2164,73 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
+  margin: 0;
 }
 
-.track-card-overlay {
+.track-card-duration {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s var(--animation-timing);
-}
-
-.track-card:hover .track-card-overlay {
-  opacity: 1;
-}
-
-.track-card-play {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  bottom: var(--spacing-sm);
+  right: var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.6);
   color: var(--text-primary);
-  font-size: 24px;
-  transform: scale(0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transform: translateY(10px);
   transition: all 0.3s var(--animation-timing);
 }
 
-.track-card:hover .track-card-play {
-  transform: scale(1);
+.track-card:hover .track-card-duration {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.track-card-favorite {
+.track-card-badge {
   position: absolute;
   top: var(--spacing-sm);
-  right: var(--spacing-sm);
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+  left: var(--spacing-sm);
+  background: var(--primary-color);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateX(-10px);
   transition: all 0.3s var(--animation-timing);
   z-index: 2;
 }
 
-.track-card-favorite:hover {
-  transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.7);
+.track-card:hover .track-card-badge {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.track-card.active .track-card-badge {
+  background: var(--primary-dark);
+}
+
+/* Анимация для активного состояния */
+.track-card.active::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, var(--primary-color), var(--accent-color-secondary));
+  z-index: -1;
+  border-radius: calc(var(--border-radius) + 2px);
+  animation: borderGlow 2s infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Адаптивность для мобильных устройств */
@@ -2126,14 +2241,58 @@ body {
     padding: var(--spacing-md);
   }
 
-  .view-toggle-container {
-    justify-content: center;
-    margin-bottom: var(--spacing-sm);
+  .track-card-play {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
   }
 
-  .view-toggle-button {
-    padding: 6px 12px;
-    font-size: 12px;
+  .track-card-favorite {
+    width: 32px;
+    height: 32px;
+    opacity: 1;
+    transform: none;
+  }
+
+  .track-card-duration {
+    opacity: 1;
+    transform: none;
+  }
+
+  .track-card:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* Добавляем эффект скелетона при загрузке */
+.track-card.loading {
+  pointer-events: none;
+}
+
+.track-card.loading .track-card-image-container {
+  background: linear-gradient(90deg,
+    var(--background-secondary) 25%,
+    var(--background-highlight) 50%,
+    var(--background-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.track-card.loading .track-card-title,
+.track-card.loading .track-card-artist {
+  background: var(--background-highlight);
+  color: transparent;
+  border-radius: 4px;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }
 
@@ -2617,5 +2776,67 @@ body {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* Добавляем стили для длительности трека в overlay */
+.track-card-overlay-duration {
+  position: absolute;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: translateY(10px);
+  opacity: 0;
+  transition: all 0.3s var(--animation-timing);
+}
+
+.track-card-overlay-duration i {
+  font-size: 12px;
+  color: var(--primary-color);
+}
+
+.track-card:hover .track-card-overlay-duration {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.track-card.active .track-card-overlay-duration {
+  background: var(--primary-color);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.track-card.active .track-card-overlay-duration i {
+  color: var(--text-primary);
+  animation: pulseDuration 2s infinite;
+}
+
+@keyframes pulseDuration {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .track-card-overlay-duration {
+    padding: 4px 8px;
+    font-size: 12px;
+    opacity: 1;
+    transform: none;
+    bottom: var(--spacing-sm);
+    right: var(--spacing-sm);
   }
 }

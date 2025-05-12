@@ -655,16 +655,21 @@ function App() {
                       <i className="fas fa-play"></i>
                     )}
                   </div>
+                  <div className="track-card-overlay-duration">
+                    <i className="fas fa-clock"></i>
+                    {formatTime(getTrackDuration(track))}
+                  </div>
                 </div>
                 <button 
-                  className="track-card-favorite"
+                  className={`track-card-favorite ${favoriteTracksIds.has(track.id) ? 'active' : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleFavorite(track.id);
                   }}
                   disabled={loading}
+                  title={favoriteTracksIds.has(track.id) ? 'Удалить из избранного' : 'Добавить в избранное'}
                 >
-                  {favoriteTracksIds.has(track.id) ? '❤️' : '🤍'}
+                  <i className={`fas ${favoriteTracksIds.has(track.id) ? 'fa-heart' : 'fa-heart'}`}></i>
                 </button>
               </div>
               <div className="track-card-content">
@@ -678,7 +683,7 @@ function App() {
         </div>
       )}
     </div>
-  ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite]);
+  ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite, formatTime, getTrackDuration]);
 
   // Обновим функцию fetchArtistInfo
   const fetchArtistInfo = useCallback(async (trackData) => {
