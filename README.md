@@ -1,70 +1,114 @@
-# Getting Started with Create React App
+# 🎵 YouTune - Modern YouTube Music Player
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-16.x-green.svg)](https://nodejs.org/)
 
-## Available Scripts
+<div align="center">
+  <p><strong>Элегантный музыкальный плеер с интеграцией YouTube Music</strong></p>
+</div>
 
-In the project directory, you can run:
+<div align="center">
+  <img src="preview.gif" alt="GhostInbox Preview" width="800"/>
+</div>
 
-### `npm start`
+## ✨ Возможности
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- 🎵 Потоковое воспроизведение музыки из YouTube Music
+- 🎨 Современный и интуитивно понятный интерфейс
+- 🌙 Темная и светлая темы
+- 📱 Адаптивный дизайн для всех устройств
+- 🎤 Отображение текстов песен
+- ❤️ Управление любимыми треками
+- 🔍 Умный поиск музыки
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 🚀 Быстрый старт
 
-### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Установка
 
-### `npm run build`
+1. Клонируйте репозиторий:
+```bash
+git clone https://github.com/mrMeowMurk/YouTune.git
+cd youtune
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+2. Установите зависимости для клиента и сервера:
+```bash
+# Установка зависимостей клиента
+cd client
+npm install
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+# Установка зависимостей сервера
+cd server
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Запустите приложение:
+```bash
+# Запуск сервера (из директории server)
+npm run dev
 
-### `npm run eject`
+# Запуск клиента (из директории client)
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 🛠️ Технологии
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Фронтенд
+- React 18
+- CSS3 с современными функциями
+- Адаптивный дизайн
+- Font Awesome для иконок
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Бэкенд
+- Node.js
+- Express.js
+- YouTube Music API
+- Lyrics.ovh API для текстов песен
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 🎯 Основные функции
 
-## Learn More
+### Воспроизведение музыки
+- Высококачественное аудио
+- Управление громкостью
+- Плейлисты и очередь воспроизведения
+- Полноэкранный режим
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Пользовательский опыт
+- Интуитивная навигация
+- Быстрый поиск
+- Управление избранным
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Тексты песен
+- Автоматический поиск текстов
 
-### Code Splitting
+## 🤝 Вклад в проект
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Мы приветствуем вклад в развитие проекта! Вот как вы можете помочь:
 
-### Analyzing the Bundle Size
+1. Форкните репозиторий
+2. Создайте ветку для ваших изменений
+3. Внесите изменения и сделайте коммиты
+4. Отправьте пулл-реквест
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 📝 Лицензия
 
-### Making a Progressive Web App
+Этот проект распространяется под лицензией MIT. Подробности в файле [LICENSE](LICENSE).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
-### Advanced Configuration
+## 📞 Контакты
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- GitHub: [@mrMeowMurk](https://github.com/mrMeowMurk)
+- Напишите в Telegram: @MrMeowMurk
 
-### Deployment
+## 🙏 Благодарности
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- [YouTube Music API](https://github.com/emresenyuva/youtube-music-api)
+- [Lyrics.ovh](https://lyrics.ovh)
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+<div align="center">
+Сделано с ❤️ MeowMurk
+</div>
