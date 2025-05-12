@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ytmusicService } from './services/ytmusicService';
-import defaultAlbumImage from './assets/default-album.png';
+import { ytmusicService } from '../services/ytmusicService';
+import defaultAlbumImage from '../assets/default-album.png';
 import './App.css';
 
 function App() {
@@ -788,22 +788,6 @@ function App() {
 
   // Обработчик для обычного прогресс-бара
   const handleProgressClick = useCallback((e) => {
-    if (!audioRef.current || !progressRef.current || loading || isBuffering) return;
-    
-    const progressBar = progressRef.current;
-    const rect = progressBar.getBoundingClientRect();
-    const clickPosition = e.clientX - rect.left;
-    const percentage = clickPosition / rect.width;
-    
-    if (percentage >= 0 && percentage <= 1) {
-      const newTime = percentage * audioRef.current.duration;
-      audioRef.current.currentTime = newTime;
-      setProgress(newTime);
-    }
-  }, [loading, isBuffering]);
-
-  // Обработчик для полноэкранного прогресс-бара
-  const handleFullscreenProgressClick = useCallback((e) => {
     if (!audioRef.current || loading || isBuffering) return;
     
     const progressBar = e.currentTarget;
@@ -1207,7 +1191,6 @@ function App() {
                 <span className="time-display">{formatTime(progress)}</span>
                 <div 
                   className="progress-bar" 
-                  ref={progressRef}
                   onClick={handleProgressClick}
                 >
                   <div 
@@ -1619,8 +1602,7 @@ function App() {
                       <span className="time-display">{formatTime(progress)}</span>
                       <div 
                         className="progress-bar" 
-                        ref={progressRef}
-                        onClick={handleFullscreenProgressClick}
+                        onClick={handleProgressClick}
                       >
                         <div 
                           className="progress-fill" 
