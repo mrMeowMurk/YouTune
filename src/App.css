@@ -2934,3 +2934,226 @@ body {
     right: var(--spacing-sm);
   }
 }
+
+/* Стили для полноэкранного режима */
+.fullscreen-player {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, 
+    var(--background-primary) 0%,
+    var(--background-elevation) 100%
+  );
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xl);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s var(--animation-timing);
+}
+
+.fullscreen-player.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.fullscreen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.fullscreen-back {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.fullscreen-back:hover {
+  color: var(--text-primary);
+}
+
+.fullscreen-back i {
+  font-size: 20px;
+}
+
+.fullscreen-content {
+  flex: 1;
+  display: flex;
+  gap: var(--spacing-xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.fullscreen-artwork {
+  flex: 0 0 auto;
+  width: 600px;
+  height: 600px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.fullscreen-artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.fullscreen-artwork:hover img {
+  transform: scale(1.05);
+}
+
+.fullscreen-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.fullscreen-track-info {
+  margin-bottom: var(--spacing-xl);
+}
+
+.fullscreen-track-title {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  line-height: 1.2;
+}
+
+.fullscreen-track-artist {
+  font-size: 24px;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.fullscreen-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.fullscreen-progress {
+  width: 100%;
+  max-width: 800px;
+}
+
+.fullscreen-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.fullscreen-play-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: var(--background-primary);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s var(--animation-timing);
+}
+
+.fullscreen-play-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-play-button i {
+  font-size: 28px;
+}
+
+/* Анимация появления */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fullscreen-player.active .fullscreen-content > * {
+  animation: slideUp 0.5s var(--animation-timing) forwards;
+}
+
+.fullscreen-player.active .fullscreen-artwork {
+  animation-delay: 0.1s;
+}
+
+.fullscreen-player.active .fullscreen-info {
+  animation-delay: 0.2s;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+  .fullscreen-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .fullscreen-artwork {
+    width: 400px;
+    height: 400px;
+  }
+
+  .fullscreen-track-title {
+    font-size: 36px;
+  }
+
+  .fullscreen-track-artist {
+    font-size: 20px;
+  }
+
+  .fullscreen-controls {
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .fullscreen-player {
+    padding: var(--spacing-md);
+  }
+
+  .fullscreen-artwork {
+    width: 280px;
+    height: 280px;
+  }
+
+  .fullscreen-track-title {
+    font-size: 28px;
+  }
+
+  .fullscreen-track-artist {
+    font-size: 18px;
+  }
+
+  .fullscreen-play-button {
+    width: 56px;
+    height: 56px;
+  }
+
+  .fullscreen-play-button i {
+    font-size: 24px;
+  }
+}

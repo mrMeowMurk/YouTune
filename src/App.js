@@ -24,6 +24,7 @@ function App() {
   const [artistInfo, setArtistInfo] = useState(null);
   const [viewMode, setViewMode] = useState('list');
   const [currentView, setCurrentView] = useState('default'); // 'default', 'favorites', 'search'
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const audioRef = useRef(null);
   const progressRef = useRef(null);
 
@@ -777,6 +778,11 @@ function App() {
     }
   }, []);
 
+  // Добавляем функцию для переключения полноэкранного режима
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen(prev => !prev);
+  }, []);
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -1086,7 +1092,7 @@ function App() {
                 <button 
                   className="player-button"
                   title="Во весь экран"
-                  onClick={() => {/* TODO: добавить функционал полноэкранного режима */}}
+                  onClick={toggleFullscreen}
                 >
                   <i className="fas fa-expand"></i>
                 </button>
@@ -1348,6 +1354,110 @@ function App() {
           <div className="loading-spinner" />
         </div>
       )}
+
+      {/* Добавляем компонент полноэкранного плеера после основного плеера */}
+      <div className={`fullscreen-player ${isFullscreen ? 'active' : ''}`}>
+        <div className="fullscreen-header">
+          <div className="fullscreen-back" onClick={() => setIsFullscreen(false)}>
+            <i className="fas fa-chevron-down"></i>
+            <span>Свернуть</span>
+          </div>
+        </div>
+        
+        <div className="fullscreen-content">
+          <div className="fullscreen-artwork">
+            <img 
+              src={currentTrack?.album?.images[0]?.url || '/default-album.png'} 
+              alt={currentTrack?.name}
+              onError={(e) => {
+                e.target.src = '/default-album.png';
+              }}
+            />
+          </div>
+          
+          <div className="fullscreen-info">
+            <div className="fullscreen-track-info">
+              <h1 className="fullscreen-track-title">{currentTrack?.name}</h1>
+              <p className="fullscreen-track-artist">
+                {currentTrack?.artists.map(artist => artist.name).join(', ')}
+              </p>
+            </div>
+            
+            <div className="fullscreen-controls">
+              <div className="fullscreen-progress">
+                <div className="progress-container">
+                  <span className="time-display">{formatTime(progress)}</span>
+                  <div 
+                    className="progress-bar" 
+                    ref={progressRef}
+                    onClick={handleProgressClick}
+                  >
+                    <div 
+                      className="progress-fill" 
+                      style={{ 
+                        width: `${duration > 0 ? (progress / duration) * 100 : 0}%` 
+                      }}
+                    />
+                  </div>
+                  <span className="time-display">{formatTime(duration)}</span>
+                </div>
+              </div>
+              
+              <div className="fullscreen-buttons">
+                <button 
+                  className="control-button shuffle"
+                  onClick={() => {/* TODO: добавить перемешивание */}}
+                  disabled={!currentPlaylist.length}
+                  title="Перемешать"
+                >
+                  <i className="fas fa-random"></i>
+                </button>
+
+                <button 
+                  className="control-button"
+                  onClick={playPreviousTrack}
+                  disabled={!currentPlaylist.length || currentTrackIndex === -1}
+                  title="Предыдущий трек"
+                >
+                  <i className="fas fa-step-backward"></i>
+                </button>
+                
+                <button 
+                  className="fullscreen-play-button" 
+                  onClick={togglePlay}
+                  disabled={loading || !currentTrack}
+                >
+                  {loading ? (
+                    <i className="fas fa-spinner fa-spin"></i>
+                  ) : isPlaying ? (
+                    <i className="fas fa-pause"></i>
+                  ) : (
+                    <i className="fas fa-play"></i>
+                  )}
+                </button>
+                
+                <button 
+                  className="control-button"
+                  onClick={playNextTrack}
+                  disabled={!currentPlaylist.length || currentTrackIndex === -1}
+                  title="Следующий трек"
+                >
+                  <i className="fas fa-step-forward"></i>
+                </button>
+
+                <button 
+                  className="control-button repeat"
+                  onClick={() => {/* TODO: добавить повтор */}}
+                  disabled={!currentTrack}
+                  title="Повторить"
+                >
+                  <i className="fas fa-redo"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
