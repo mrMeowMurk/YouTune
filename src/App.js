@@ -23,9 +23,11 @@ function App() {
   const [favoriteTracksCount, setFavoriteTracksCount] = useState(0);
   const [favoriteTracksIds, setFavoriteTracksIds] = useState(new Set());
   const [artistInfo, setArtistInfo] = useState(null);
-  const [viewMode, setViewMode] = useState('list');
+  const [viewMode, setViewMode] = useState('grid');
   const [currentView, setCurrentView] = useState('default'); // 'default', 'favorites', 'search'
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [currentLyrics, setCurrentLyrics] = useState(null);
   const audioRef = useRef(null);
   const progressRef = useRef(null);
 
@@ -166,7 +168,7 @@ function App() {
         const isServerReady = await ytmusicService.checkHealth();
         setServerStatus(isServerReady);
         
-        if (isServerReady) {
+        if (isServerReady && !recommendations.length) {
           await loadRecommendations();
         }
       } catch (error) {
@@ -816,6 +818,113 @@ function App() {
     }
   }, [loading, isBuffering]);
 
+  // Обновляем функцию для переключения отображения текста
+  const toggleLyrics = useCallback(() => {
+    if (!currentTrack) {
+      setError('Сначала выберите песню');
+      return;
+    }
+
+    setShowLyrics(prev => {
+      const newState = !prev;
+      if (newState) {
+        // Если включаем текст, устанавливаем полноэкранный режим
+        setIsFullscreen(true);
+        // Сбрасываем предыдущие ошибки
+        setError(null);
+        // Сбрасываем предыдущий текст
+        setCurrentLyrics(null);
+      }
+      return newState;
+    });
+  }, [currentTrack]);
+
+  // Обновляем useEffect для загрузки текста при смене трека
+  useEffect(() => {
+    let isMounted = true;
+    let timeoutId;
+
+    const loadLyrics = async () => {
+      if (!currentTrack || !showLyrics) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setCurrentLyrics(null);
+        setError(null);
+        
+        // Добавляем небольшую задержку перед запросом
+        timeoutId = setTimeout(async () => {
+          try {
+            const lyricsData = await ytmusicService.getLyrics(currentTrack.id);
+            
+            if (!isMounted) return;
+
+            if (!lyricsData || !lyricsData.lyrics) {
+              throw new Error('Текст песни не найден');
+            }
+
+            setCurrentLyrics(lyricsData.lyrics);
+            setError(null);
+          } catch (error) {
+            if (!isMounted) return;
+
+            console.error('Ошибка загрузки текста:', error);
+            
+            // Устанавливаем понятное сообщение об ошибке
+            const errorMessage = error.message === 'Текст песни не найден'
+              ? 'К сожалению, текст этой песни не найден'
+              : 'Произошла ошибка при загрузке текста песни';
+            
+            setError(errorMessage);
+            
+            // Формируем информативное сообщение для пользователя
+            setCurrentLyrics(
+              'К сожалению, текст этой песни недоступен.\n\n' +
+              `${errorMessage}\n\n` +
+              `Название: ${currentTrack.name}\n` +
+              `Исполнитель: ${currentTrack.artists.map(a => a.name).join(', ')}`
+            );
+
+            // Если это критическая ошибка, можно закрыть полноэкранный режим
+            if (error.message !== 'Текст песни не найден') {
+              setTimeout(() => {
+                if (isMounted) {
+                  setIsFullscreen(false);
+                  setShowLyrics(false);
+                }
+              }, 3000);
+            }
+          } finally {
+            if (isMounted) {
+              setLoading(false);
+            }
+          }
+        }, 500);
+      } catch (error) {
+        if (!isMounted) return;
+
+        console.error('Критическая ошибка при загрузке текста:', error);
+        setError('Произошла непредвиденная ошибка');
+        setLoading(false);
+        
+        // Закрываем полноэкранный режим при критической ошибке
+        setIsFullscreen(false);
+        setShowLyrics(false);
+      }
+    };
+
+    loadLyrics();
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [currentTrack, showLyrics]);
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -834,7 +943,7 @@ function App() {
           <div className="header-left">
             <div className="app-logo">
               <span className="logo-icon">🎵</span>
-              <span className="logo-text">YTMusic</span>
+              <span className="logo-text">YouTune</span>
             </div>
           </div>
 
@@ -1115,13 +1224,12 @@ function App() {
             <div className="player-right">
               <div className="player-right-controls">
                 <button 
-                  className="player-button"
+                  className={`player-button ${showLyrics ? 'active' : ''}`}
                   title="Текст песни"
-                  onClick={() => {/* TODO: добавить функционал показа текста */}}
+                  onClick={toggleLyrics}
                 >
                   <i className="fas fa-microphone-alt"></i>
                 </button>
-                <div className="player-controls-divider"></div>
                 <button 
                   className="player-button"
                   title="Во весь экран"
@@ -1397,131 +1505,171 @@ function App() {
       {/* Добавляем компонент полноэкранного плеера после основного плеера */}
       <div className={`fullscreen-player ${isFullscreen ? 'active' : ''}`}>
         <div className="fullscreen-header">
-          <div className="fullscreen-back" onClick={() => setIsFullscreen(false)}>
+          <div className="fullscreen-back" onClick={() => {
+            setIsFullscreen(false);
+            setShowLyrics(false);
+          }}>
             <i className="fas fa-chevron-down"></i>
           </div>
+          <div className="fullscreen-title">
+            {showLyrics ? 'Текст песни' : 'Сейчас играет'}
+          </div>
+          <button 
+            className={`fullscreen-lyrics-toggle ${showLyrics ? 'active' : ''}`}
+            onClick={() => setShowLyrics(prev => !prev)}
+          >
+            <i className="fas fa-microphone-alt"></i>
+          </button>
         </div>
         
         <div className="fullscreen-content">
-          <div className="fullscreen-artwork">
-            <img 
-              src={currentTrack?.album?.images[0]?.url || defaultAlbumImage} 
-              alt={currentTrack?.name}
-              onError={(e) => {
-                e.target.src = defaultAlbumImage;
-              }}
-            />
-          </div>
-          
-          <div className="fullscreen-info">
-            <div className="fullscreen-track-info">
-              <h1 className="fullscreen-track-title">{currentTrack?.name}</h1>
-              <p className="fullscreen-track-artist">
-                {currentTrack?.artists.map(artist => artist.name).join(', ')}
-              </p>
-            </div>
-            
-            <div className="fullscreen-controls">
-              <div className="fullscreen-progress">
-                <div className="progress-container">
-                  <span className="time-display">{formatTime(progress)}</span>
-                  <div 
-                    className="progress-bar" 
-                    ref={progressRef}
-                    onClick={handleFullscreenProgressClick}
-                  >
-                    <div 
-                      className="progress-fill" 
-                      style={{ 
-                        width: `${duration > 0 ? (progress / duration) * 100 : 0}%` 
-                      }}
-                    />
+          {showLyrics ? (
+            <div className="lyrics-container">
+              <div className="lyrics-header">
+                <h2>{currentTrack?.name}</h2>
+                <p>{currentTrack?.artists.map(artist => artist.name).join(', ')}</p>
+              </div>
+              <div className="lyrics-content">
+                {loading ? (
+                  <div className="lyrics-loading">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span>Загрузка текста песни...</span>
                   </div>
-                  <span className="time-display">{formatTime(duration)}</span>
-                </div>
+                ) : error ? (
+                  <div className="lyrics-error">
+                    <i className="fas fa-exclamation-circle"></i>
+                    <span>{error}</span>
+                  </div>
+                ) : (
+                  <pre className="lyrics-text">
+                    {currentLyrics || 'Текст песни не найден'}
+                  </pre>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="fullscreen-artwork">
+                <img 
+                  src={currentTrack?.album?.images[0]?.url || defaultAlbumImage} 
+                  alt={currentTrack?.name}
+                  onError={(e) => {
+                    e.target.src = defaultAlbumImage;
+                  }}
+                />
               </div>
               
-              <div className="fullscreen-buttons">
-                <button 
-                  className="control-button shuffle"
-                  onClick={() => {/* TODO: добавить перемешивание */}}
-                  disabled={!currentPlaylist.length}
-                  title="Перемешать"
-                >
-                  <i className="fas fa-random"></i>
-                </button>
-
-                <button 
-                  className="control-button"
-                  onClick={playPreviousTrack}
-                  disabled={!currentPlaylist.length || currentTrackIndex === -1}
-                  title="Предыдущий трек"
-                >
-                  <i className="fas fa-step-backward"></i>
-                </button>
+              <div className="fullscreen-info">
+                <div className="fullscreen-track-info">
+                  <h1 className="fullscreen-track-title">{currentTrack?.name}</h1>
+                  <p className="fullscreen-track-artist">
+                    {currentTrack?.artists.map(artist => artist.name).join(', ')}
+                  </p>
+                </div>
                 
-                <button 
-                  className="fullscreen-play-button" 
-                  onClick={togglePlay}
-                  disabled={loading || !currentTrack}
-                >
-                  {loading ? (
-                    <i className="fas fa-spinner fa-spin"></i>
-                  ) : isPlaying ? (
-                    <i className="fas fa-pause"></i>
-                  ) : (
-                    <i className="fas fa-play"></i>
-                  )}
-                </button>
-                
-                <button 
-                  className="control-button"
-                  onClick={playNextTrack}
-                  disabled={!currentPlaylist.length || currentTrackIndex === -1}
-                  title="Следующий трек"
-                >
-                  <i className="fas fa-step-forward"></i>
-                </button>
+                <div className="fullscreen-controls">
+                  <div className="fullscreen-progress">
+                    <div className="progress-container">
+                      <span className="time-display">{formatTime(progress)}</span>
+                      <div 
+                        className="progress-bar" 
+                        ref={progressRef}
+                        onClick={handleFullscreenProgressClick}
+                      >
+                        <div 
+                          className="progress-fill" 
+                          style={{ 
+                            width: `${duration > 0 ? (progress / duration) * 100 : 0}%` 
+                          }}
+                        />
+                      </div>
+                      <span className="time-display">{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="fullscreen-buttons">
+                    <button 
+                      className="control-button shuffle"
+                      onClick={() => {/* TODO: добавить перемешивание */}}
+                      disabled={!currentPlaylist.length}
+                      title="Перемешать"
+                    >
+                      <i className="fas fa-random"></i>
+                    </button>
 
-                <button 
-                  className="control-button repeat"
-                  onClick={() => {/* TODO: добавить повтор */}}
-                  disabled={!currentTrack}
-                  title="Повторить"
-                >
-                  <i className="fas fa-redo"></i>
-                </button>
+                    <button 
+                      className="control-button"
+                      onClick={playPreviousTrack}
+                      disabled={!currentPlaylist.length || currentTrackIndex === -1}
+                      title="Предыдущий трек"
+                    >
+                      <i className="fas fa-step-backward"></i>
+                    </button>
+                    
+                    <button 
+                      className="fullscreen-play-button" 
+                      onClick={togglePlay}
+                      disabled={loading || !currentTrack}
+                    >
+                      {loading ? (
+                        <i className="fas fa-spinner fa-spin"></i>
+                      ) : isPlaying ? (
+                        <i className="fas fa-pause"></i>
+                      ) : (
+                        <i className="fas fa-play"></i>
+                      )}
+                    </button>
+                    
+                    <button 
+                      className="control-button"
+                      onClick={playNextTrack}
+                      disabled={!currentPlaylist.length || currentTrackIndex === -1}
+                      title="Следующий трек"
+                    >
+                      <i className="fas fa-step-forward"></i>
+                    </button>
+
+                    <button 
+                      className="control-button repeat"
+                      onClick={() => {/* TODO: добавить повтор */}}
+                      disabled={!currentTrack}
+                      title="Повторить"
+                    >
+                      <i className="fas fa-redo"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="fullscreen-volume-control">
+                  <button 
+                    className="fullscreen-volume-button"
+                    onClick={toggleMute}
+                    title={isMuted ? "Включить звук" : "Выключить звук"}
+                  >
+                    {isMuted ? (
+                      <i className="fas fa-volume-mute"></i>
+                    ) : volume > 0.5 ? (
+                      <i className="fas fa-volume-up"></i>
+                    ) : volume > 0 ? (
+                      <i className="fas fa-volume-down"></i>
+                    ) : (
+                      <i className="fas fa-volume-off"></i>
+                    )}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    className="fullscreen-volume-slider"
+                    title="Громкость"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="fullscreen-volume-control">
-              <button 
-                className="fullscreen-volume-button"
-                onClick={toggleMute}
-                title={isMuted ? "Включить звук" : "Выключить звук"}
-              >
-                {isMuted ? (
-                  <i className="fas fa-volume-mute"></i>
-                ) : volume > 0.5 ? (
-                  <i className="fas fa-volume-up"></i>
-                ) : volume > 0 ? (
-                  <i className="fas fa-volume-down"></i>
-                ) : (
-                  <i className="fas fa-volume-off"></i>
-                )}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                className="fullscreen-volume-slider"
-                title="Громкость"
-              />
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

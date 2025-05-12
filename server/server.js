@@ -3,6 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const YoutubeMusicApi = require('youtube-music-api');
 const ytdl = require('@distube/ytdl-core');
+const axios = require('axios');
+
+// Проверяем наличие токена Genius API
+if (process.env.GENIUS_ACCESS_TOKEN) {
+    console.log('Genius API Token успешно загружен');
+} else {
+    console.log('Внимание: Отсутствует GENIUS_ACCESS_TOKEN в .env файле');
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -575,6 +583,128 @@ function formatArtistDescription(description) {
     
     return formatted;
 }
+
+// Функция для очистки названия трека и имени исполнителя
+function cleanupMusicData(text) {
+    return text
+        .toLowerCase()
+        .replace(/\(feat\.?.*?\)/gi, '') // Удаляем feat. артистов
+        .replace(/\(ft\.?.*?\)/gi, '')   // Удаляем ft. артистов
+        .replace(/\[.*?\]/g, '')         // Удаляем текст в квадратных скобках
+        .replace(/\(.*?\)/g, '')         // Удаляем текст в круглых скобках
+        .replace(/official\s*(music)?\s*video/gi, '') // Удаляем "official video"
+        .replace(/lyrics\s*video/gi, '') // Удаляем "lyrics video"
+        .replace(/\b(hd|hq)\b/gi, '')    // Удаляем HD/HQ
+        .replace(/\d{4}/, '')            // Удаляем год
+        .replace(/[^\w\s-]/g, '')        // Оставляем только буквы, цифры, пробелы и дефисы
+        .replace(/\s+/g, ' ')            // Заменяем множественные пробелы на один
+        .trim();
+}
+
+// Функция для получения текста песни с lyrics.ovh
+async function fetchLyrics(trackName, artistName) {
+    try {
+        // Очищаем названия
+        const cleanTrackName = cleanupMusicData(trackName);
+        const cleanArtistName = cleanupMusicData(artistName);
+
+        // Создаем варианты поиска
+        const searchVariants = [
+            { track: cleanTrackName, artist: cleanArtistName },
+            { track: trackName, artist: artistName }, // Оригинальные названия как запасной вариант
+        ];
+
+        // Пробуем каждый вариант поиска
+        for (const variant of searchVariants) {
+            try {
+                const response = await axios.get(`https://api.lyrics.ovh/v1/${encodeURIComponent(variant.artist)}/${encodeURIComponent(variant.track)}`, {
+                    timeout: 10000,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                // Проверяем наличие текста в ответе
+                if (response.data && response.data.lyrics) {
+                    // Форматируем текст песни
+                    const formattedLyrics = response.data.lyrics
+                        .trim()
+                        .replace(/\r\n/g, '\n') // Нормализуем переносы строк
+                        .replace(/\n{3,}/g, '\n\n') // Убираем лишние пустые строки
+                        .replace(/\[.*?\]/g, '') // Убираем метки времени и прочие пометки в квадратных скобках
+                        .trim();
+
+                    return {
+                        lyrics: formattedLyrics,
+                        source: 'lyrics.ovh'
+                    };
+                }
+            } catch (error) {
+                // Если получили 404, продолжаем со следующим вариантом
+                if (error.response && error.response.status === 404) {
+                    console.log(`Текст не найден для варианта: ${variant.artist} - ${variant.track}`);
+                    continue;
+                }
+                
+                // Если ошибка не 404, проверяем детали
+                if (error.response) {
+                    // Получили ответ от сервера с ошибкой
+                    console.error('Ошибка API lyrics.ovh:', error.response.status, error.response.data);
+                } else if (error.request) {
+                    // Запрос был сделан, но ответ не получен
+                    console.error('Нет ответа от lyrics.ovh:', error.request);
+                } else {
+                    // Ошибка при подготовке запроса
+                    console.error('Ошибка запроса:', error.message);
+                }
+                
+                throw error;
+            }
+        }
+
+        // Если ни один вариант не сработал, возвращаем информативное сообщение
+        return {
+            lyrics: `К сожалению, текст песни "${trackName}" от исполнителя "${artistName}" не найден.\n\nВозможные причины:\n- Текст песни еще не добавлен в базу данных\n- Название песни или исполнителя указано неверно\n- Временная недоступность сервиса`,
+            source: 'not_found'
+        };
+    } catch (error) {
+        console.error('Ошибка при получении текста песни:', error);
+        return {
+            lyrics: 'Произошла ошибка при получении текста песни. Пожалуйста, попробуйте позже.',
+            source: 'error',
+            error: error.message
+        };
+    }
+}
+
+// Эндпоинт для получения текста песни
+app.get('/api/lyrics/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Получаем информацию о треке
+        const searchResults = await api.search(id, "song");
+        const track = searchResults.content.find(t => t.videoId === id);
+        
+        if (!track) {
+            return res.status(404).json({
+                lyrics: 'Трек не найден',
+                source: 'error'
+            });
+        }
+
+        // Получаем текст песни
+        const lyricsResult = await fetchLyrics(track.name, track.artist.name);
+        res.json(lyricsResult);
+    } catch (error) {
+        console.error('Ошибка при обработке запроса текста песни:', error);
+        res.status(500).json({
+            lyrics: 'Произошла ошибка при получении текста песни. Пожалуйста, попробуйте позже.',
+            source: 'error'
+        });
+    }
+});
 
 // Глобальная обработка ошибок
 app.use((err, req, res, next) => {

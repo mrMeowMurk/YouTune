@@ -3,6 +3,8 @@ import axios from 'axios';
 const API_BASE_URL = 'http://localhost:5000/api';
 
 class YTMusicService {
+    #lyricsCache = new Map();
+
     async checkHealth() {
         try {
             const response = await axios.get(`${API_BASE_URL}/health`);
@@ -120,6 +122,35 @@ class YTMusicService {
             return response.data;
         } catch (error) {
             console.error('Ошибка получения информации об исполнителе по имени:', error);
+            throw error;
+        }
+    }
+
+    async getLyrics(trackId) {
+        try {
+            // Проверяем кэш
+            if (this.#lyricsCache.has(trackId)) {
+                return this.#lyricsCache.get(trackId);
+            }
+
+            const response = await axios.get(`${API_BASE_URL}/lyrics/${trackId}`, {
+                timeout: 10000 // Устанавливаем таймаут в 10 секунд
+            });
+
+            if (!response.data || !response.data.lyrics) {
+                throw new Error('Текст песни не найден');
+            }
+
+            const { lyrics, source } = response.data;
+
+            // Кэшируем результат только если это не ошибка и не "не найдено"
+            if (source === 'lyrics.ovh') {
+                this.#lyricsCache.set(trackId, { lyrics, source });
+            }
+            
+            return { lyrics, source };
+        } catch (error) {
+            console.error('Ошибка получения текста песни:', error);
             throw error;
         }
     }
