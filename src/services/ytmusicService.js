@@ -103,6 +103,26 @@ class YTMusicService {
             throw error;
         }
     }
+
+    async getArtistById(id) {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/artist/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Ошибка получения информации об исполнителе:', error);
+            throw error;
+        }
+    }
+
+    async getArtistByName(name) {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/artist-by-name/${encodeURIComponent(name)}`);
+            return response.data;
+        } catch (error) {
+            console.error('Ошибка получения информации об исполнителе по имени:', error);
+            throw error;
+        }
+    }
 }
 
 export const ytmusicService = new YTMusicService(); 

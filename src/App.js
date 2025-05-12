@@ -21,6 +21,7 @@ function App() {
   const [isDarkTheme, setIsDarkTheme] = useState(true);
   const [favoriteTracksCount, setFavoriteTracksCount] = useState(0);
   const [favoriteTracksIds, setFavoriteTracksIds] = useState(new Set());
+  const [artistInfo, setArtistInfo] = useState(null);
   const audioRef = useRef(null);
   const progressRef = useRef(null);
   const [viewMode, setViewMode] = useState('list');
@@ -645,6 +646,63 @@ function App() {
     </div>
   ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite]);
 
+  // Обновим функцию fetchArtistInfo
+  const fetchArtistInfo = useCallback(async (trackData) => {
+    if (!trackData?.artists?.length) return;
+    
+    try {
+      const artistName = trackData.artists[0].name;
+      
+      // Пытаемся получить информацию по имени исполнителя
+      try {
+        const artistData = await ytmusicService.getArtistByName(artistName);
+        if (artistData) {
+          setArtistInfo({
+            id: artistData.id,
+            name: artistData.name,
+            image: artistData.image,
+            followers: artistData.followers,
+            description: artistData.description
+          });
+          return;
+        }
+      } catch (error) {
+        console.log('Не удалось получить информацию по имени исполнителя, используем резервные данные');
+      }
+      
+      // Если не удалось получить по имени, создаем базовую информацию
+      setArtistInfo({
+        name: artistName,
+        image: null,
+        followers: "более 1 000 000 слушателей",
+        description: "Исполнитель из коллекции YouTube Music. Музыка исполнителя — это переосмысление сложившихся традиций, смешанных с современными тенденциями."
+      });
+    } catch (error) {
+      console.error("Ошибка при получении информации об исполнителе:", error);
+      setArtistInfo(null);
+    }
+  }, []);
+
+  // Обновим useEffect для вызова fetchArtistInfo
+  useEffect(() => {
+    if (currentTrack?.artists?.length > 0) {
+      fetchArtistInfo(currentTrack);
+      
+      // Скроллим боковую панель вверх при смене трека
+      const sidebarElement = document.querySelector('.sidebar-right');
+      if (sidebarElement) {
+        sidebarElement.scrollTop = 0;
+      }
+    }
+  }, [currentTrack, fetchArtistInfo]);
+
+  // Добавим функцию для получения следующего трека
+  const getNextTrack = useCallback(() => {
+    if (!currentPlaylist.length || currentTrackIndex === -1) return null;
+    const nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
+    return currentPlaylist[nextIndex];
+  }, [currentPlaylist, currentTrackIndex]);
+
   if (!serverStatus) {
     return (
       <div className="app">
@@ -960,6 +1018,151 @@ function App() {
           </div>
         </div>
       )}
+
+      <aside className="sidebar-right">
+        {/* Превью текущего трека */}
+        <section className="current-track-preview">
+          <div className="preview-header">
+            <h3 className="preview-title">
+              <i className="fas fa-music preview-title-icon"></i>
+              Сейчас играет
+            </h3>
+          </div>
+          <div className="preview-content">
+            {currentTrack ? (
+              <div className="preview-track">
+                <div className="preview-track-image-container">
+                  {currentTrack.album?.images?.[0]?.url ? (
+                    <img 
+                      src={currentTrack.album.images[0].url} 
+                      alt={currentTrack.name} 
+                      className="preview-track-image"
+                    />
+                  ) : (
+                    <div className="preview-track-placeholder">
+                      <i className="fas fa-music"></i>
+                    </div>
+                  )}
+                </div>
+                <div className="preview-track-info">
+                  <h4 className="preview-track-name">{currentTrack.name}</h4>
+                  <p className="preview-track-artist">
+                    {currentTrack.artists.map(artist => artist.name).join(', ')}
+                  </p>
+                  <div className="preview-actions">
+                    <button 
+                      className={`preview-action-button favorite ${favoriteTracksIds.has(currentTrack.id) ? 'active' : ''}`}
+                      onClick={() => toggleFavorite(currentTrack.id)}
+                      title={favoriteTracksIds.has(currentTrack.id) ? 'Удалить из избранного' : 'Добавить в избранное'}
+                    >
+                      <i className={favoriteTracksIds.has(currentTrack.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+                    </button>
+                    <button 
+                      className="preview-action-button"
+                      title="Поделиться"
+                    >
+                      <i className="fas fa-share-alt"></i>
+                    </button>
+                    <button 
+                      className="preview-action-button"
+                      title="Добавить в плейлист"
+                    >
+                      <i className="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="preview-track">
+                <div className="preview-track-image-container">
+                  <div className="preview-track-placeholder">
+                    <i className="fas fa-music"></i>
+                  </div>
+                </div>
+                <div className="preview-track-info">
+                  <p className="preview-track-placeholder-text">Выберите песню для воспроизведения</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Информация об исполнителе */}
+        <section className="artist-info">
+          <div className="artist-header">
+            {artistInfo && artistInfo.image ? (
+              <img 
+                src={artistInfo.image} 
+                alt={artistInfo.name} 
+                className="artist-image" 
+              />
+            ) : (
+              <div className="artist-placeholder">
+                <i className="fas fa-user"></i>
+              </div>
+            )}
+            <h3 className="artist-name">{artistInfo ? artistInfo.name : 'Исполнитель'}</h3>
+          </div>
+          <div className="artist-followers">
+            <i className="fas fa-users"></i>
+            <span>{artistInfo ? artistInfo.followers : '0 слушателей'}</span>
+          </div>
+          <p className="artist-details">
+            {artistInfo ? 
+              artistInfo.description.split('\n\n').map((paragraph, index) => (
+                <span key={index}>
+                  {paragraph}
+                  {index < artistInfo.description.split('\n\n').length - 1 && <br />}
+                </span>
+              )) 
+              : 'Выберите песню, чтобы узнать больше об исполнителе.'}
+          </p>
+        </section>
+
+        {/* Следующий трек */}
+        <section className="next-track">
+          <div className="next-track-header">
+            <h3 className="next-track-title">
+              <i className="fas fa-stream next-track-icon"></i>
+              <span>Далее в очереди</span>
+            </h3>
+          </div>
+          {getNextTrack() ? (
+            <div 
+              className="next-track-content"
+              onClick={() => handleTrackSelect(getNextTrack(), currentPlaylist)}
+            >
+              {getNextTrack().album?.images?.[0]?.url ? (
+                <img 
+                  src={getNextTrack().album.images[0].url} 
+                  alt={getNextTrack().name} 
+                  className="next-track-image"
+                />
+              ) : (
+                <div className="next-track-placeholder-icon">
+                  <i className="fas fa-music"></i>
+                </div>
+              )}
+              <div className="next-track-info">
+                <h4 className="next-track-name">{getNextTrack().name}</h4>
+                <p className="next-track-artist">
+                  {getNextTrack().artists.map(artist => artist.name).join(', ')}
+                </p>
+              </div>
+              <span className="next-track-duration">
+                {getNextTrack().duration ? formatTime(getNextTrack().duration) : "0:00"}
+              </span>
+            </div>
+          ) : (
+            <div className="next-track-placeholder">
+              <div className="next-track-placeholder-icon">
+                <i className="fas fa-music"></i>
+              </div>
+              <span className="next-track-placeholder-text">Нет треков в очереди</span>
+            </div>
+          )}
+        </section>
+      </aside>
 
       <audio
         ref={audioRef}

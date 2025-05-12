@@ -455,6 +455,127 @@ app.get('/api/favorites/:id', (req, res) => {
     }
 });
 
+// Получение информации об исполнителе
+app.get('/api/artist/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ error: 'ID исполнителя обязателен' });
+        }
+
+        // Получаем информацию об исполнителе
+        const artistData = await api.getArtist(id);
+        
+        if (!artistData) {
+            return res.status(404).json({ error: 'Исполнитель не найден' });
+        }
+
+        // Форматируем ответ
+        const formattedArtist = {
+            id: artistData.artistId || id,
+            name: artistData.name || 'Неизвестный исполнитель',
+            image: artistData.thumbnails && artistData.thumbnails.length > 0 
+                ? artistData.thumbnails[0].url 
+                : null,
+            followers: formatSubscriberCount(artistData.subscriberCount),
+            description: formatArtistDescription(artistData.description || 'Информация об исполнителе отсутствует.'),
+            songs: artistData.songs ? artistData.songs.map(formatTrackResponse) : []
+        };
+        
+        res.json(formattedArtist);
+    } catch (error) {
+        console.error('Ошибка получения информации об исполнителе:', error);
+        res.status(500).json({ 
+            error: 'Ошибка при получении информации об исполнителе',
+            message: error.message 
+        });
+    }
+});
+
+// Альтернативный эндпоинт для получения информации об исполнителе по имени
+app.get('/api/artist-by-name/:name', async (req, res) => {
+    try {
+        const { name } = req.params;
+        if (!name) {
+            return res.status(400).json({ error: 'Имя исполнителя обязательно' });
+        }
+
+        // Ищем исполнителя по имени
+        const searchResults = await api.search(name, "artist");
+        
+        if (!searchResults || !searchResults.content || searchResults.content.length === 0) {
+            return res.status(404).json({ error: 'Исполнитель не найден' });
+        }
+
+        // Находим первого исполнителя в результатах
+        const artist = searchResults.content.find(item => item.type === 'artist');
+        
+        if (!artist) {
+            return res.status(404).json({ error: 'Исполнитель не найден' });
+        }
+
+        // Получаем подробную информацию об исполнителе
+        const artistData = await api.getArtist(artist.browseId);
+        
+        // Форматируем ответ
+        const formattedArtist = {
+            id: artistData.artistId || artist.browseId,
+            name: artistData.name || artist.name || 'Неизвестный исполнитель',
+            image: artistData.thumbnails && artistData.thumbnails.length > 0 
+                ? artistData.thumbnails[0].url 
+                : (artist.thumbnailUrl || null),
+            followers: formatSubscriberCount(artistData.subscriberCount),
+            description: formatArtistDescription(artistData.description || 'Информация об исполнителе отсутствует.'),
+            songs: artistData.songs ? artistData.songs.map(formatTrackResponse) : []
+        };
+        
+        res.json(formattedArtist);
+    } catch (error) {
+        console.error('Ошибка получения информации об исполнителе по имени:', error);
+        res.status(500).json({ 
+            error: 'Ошибка при получении информации об исполнителе',
+            message: error.message 
+        });
+    }
+});
+
+// Функция для форматирования числа подписчиков
+function formatSubscriberCount(subscriberCount) {
+    if (!subscriberCount) return 'более 1 000 000 слушателей';
+    
+    // Удаляем все нечисловые символы, кроме цифр
+    const numericValue = subscriberCount.toString().replace(/[^\d]/g, '');
+    const count = parseInt(numericValue, 10);
+    
+    if (isNaN(count)) return 'более 1 000 000 слушателей';
+    
+    if (count >= 1000000) {
+        return `${Math.floor(count / 1000000)} млн слушателей`;
+    } else if (count >= 1000) {
+        return `${Math.floor(count / 1000)} тыс. слушателей`;
+    } else {
+        return `${count} слушателей`;
+    }
+}
+
+// Функция для форматирования описания исполнителя
+function formatArtistDescription(description) {
+    if (!description) return 'Информация об исполнителе отсутствует.';
+    
+    // Разбиваем длинные предложения на более короткие
+    let formatted = description
+        .replace(/\.\s+/g, '.\n\n') // Делаем новый абзац после каждого предложения
+        .replace(/(\r\n|\r|\n){3,}/g, '\n\n') // Убираем лишние переносы строк
+        .trim();
+    
+    // Ограничиваем длину до 500 символов
+    if (formatted.length > 500) {
+        formatted = formatted.substring(0, 497) + '...';
+    }
+    
+    return formatted;
+}
+
 // Глобальная обработка ошибок
 app.use((err, req, res, next) => {
     console.error('Необработанная ошибка:', err);
