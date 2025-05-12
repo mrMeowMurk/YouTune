@@ -586,6 +586,11 @@ function formatArtistDescription(description) {
 
 // Функция для очистки названия трека и имени исполнителя
 function cleanupMusicData(text) {
+    // Проверяем входные данные
+    if (!text || typeof text !== 'string') {
+        return '';
+    }
+
     return text
         .toLowerCase()
         .replace(/\(feat\.?.*?\)/gi, '') // Удаляем feat. артистов
@@ -604,15 +609,43 @@ function cleanupMusicData(text) {
 // Функция для получения текста песни с lyrics.ovh
 async function fetchLyrics(trackName, artistName) {
     try {
+        // Проверяем наличие необходимых данных
+        if (!trackName || !artistName) {
+            console.log('Отсутствуют данные:', { trackName, artistName });
+            return {
+                lyrics: 'Недостаточно данных для поиска текста песни.',
+                source: 'error',
+                error: 'MISSING_DATA'
+            };
+        }
+
+        // Проверяем, является ли artistName объектом
+        const artistNameStr = typeof artistName === 'object' && artistName.name 
+            ? artistName.name 
+            : String(artistName);
+
         // Очищаем названия
         const cleanTrackName = cleanupMusicData(trackName);
-        const cleanArtistName = cleanupMusicData(artistName);
+        const cleanArtistName = cleanupMusicData(artistNameStr);
+
+        // Проверяем, получились ли валидные строки после очистки
+        if (!cleanTrackName || !cleanArtistName) {
+            console.log('Некорректные данные после очистки:', { cleanTrackName, cleanArtistName });
+            return {
+                lyrics: 'Не удалось обработать название песни или имя исполнителя.',
+                source: 'error',
+                error: 'INVALID_DATA'
+            };
+        }
 
         // Создаем варианты поиска
         const searchVariants = [
             { track: cleanTrackName, artist: cleanArtistName },
-            { track: trackName, artist: artistName }, // Оригинальные названия как запасной вариант
+            { track: trackName, artist: artistNameStr }, // Оригинальные названия как запасной вариант
         ];
+
+        // Логируем варианты поиска
+        console.log('Поиск текста песни для вариантов:', searchVariants);
 
         // Пробуем каждый вариант поиска
         for (const variant of searchVariants) {
@@ -649,13 +682,10 @@ async function fetchLyrics(trackName, artistName) {
                 
                 // Если ошибка не 404, проверяем детали
                 if (error.response) {
-                    // Получили ответ от сервера с ошибкой
                     console.error('Ошибка API lyrics.ovh:', error.response.status, error.response.data);
                 } else if (error.request) {
-                    // Запрос был сделан, но ответ не получен
                     console.error('Нет ответа от lyrics.ovh:', error.request);
                 } else {
-                    // Ошибка при подготовке запроса
                     console.error('Ошибка запроса:', error.message);
                 }
                 
@@ -665,7 +695,7 @@ async function fetchLyrics(trackName, artistName) {
 
         // Если ни один вариант не сработал, возвращаем информативное сообщение
         return {
-            lyrics: `К сожалению, текст песни "${trackName}" от исполнителя "${artistName}" не найден.\n\nВозможные причины:\n- Текст песни еще не добавлен в базу данных\n- Название песни или исполнителя указано неверно\n- Временная недоступность сервиса`,
+            lyrics: `К сожалению, текст песни "${trackName}" от исполнителя "${artistNameStr}" не найден.\n\nВозможные причины:\n- Текст песни еще не добавлен в базу данных\n- Название песни или исполнителя указано неверно\n- Временная недоступность сервиса`,
             source: 'not_found'
         };
     } catch (error) {
@@ -690,18 +720,30 @@ app.get('/api/lyrics/:id', async (req, res) => {
         if (!track) {
             return res.status(404).json({
                 lyrics: 'Трек не найден',
-                source: 'error'
+                source: 'error',
+                error: 'TRACK_NOT_FOUND'
+            });
+        }
+
+        // Проверяем наличие необходимых данных
+        if (!track.name || !track.artist) {
+            console.error('Некорректные данные трека:', track);
+            return res.status(400).json({
+                lyrics: 'Недостаточно данных для поиска текста песни',
+                source: 'error',
+                error: 'INVALID_TRACK_DATA'
             });
         }
 
         // Получаем текст песни
-        const lyricsResult = await fetchLyrics(track.name, track.artist.name);
+        const lyricsResult = await fetchLyrics(track.name, track.artist);
         res.json(lyricsResult);
     } catch (error) {
         console.error('Ошибка при обработке запроса текста песни:', error);
         res.status(500).json({
             lyrics: 'Произошла ошибка при получении текста песни. Пожалуйста, попробуйте позже.',
-            source: 'error'
+            source: 'error',
+            error: error.message
         });
     }
 });

@@ -1532,13 +1532,59 @@ function App() {
               <div className="lyrics-content">
                 {loading ? (
                   <div className="lyrics-loading">
-                    <i className="fas fa-spinner fa-spin"></i>
-                    <span>Загрузка текста песни...</span>
+                    <div className="lyrics-loading-animation">
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                      <div></div>
+                    </div>
+                    <p className="lyrics-loading-text">Загрузка текста песни...</p>
                   </div>
                 ) : error ? (
                   <div className="lyrics-error">
-                    <i className="fas fa-exclamation-circle"></i>
-                    <span>{error}</span>
+                    <div className="lyrics-error-icon">
+                      <i className="fas fa-music-slash"></i>
+                    </div>
+                    <h3 className="lyrics-error-title">
+                      {error === 'Текст песни не найден' ? 'Текст песни не найден' : 'Что-то пошло не так'}
+                    </h3>
+                    <p className="lyrics-error-message">
+                      {error === 'Текст песни не найден' 
+                        ? `К сожалению, мы не смогли найти текст песни "${currentTrack?.name}"`
+                        : 'Произошла ошибка при загрузке текста песни'}
+                    </p>
+                    <p className="lyrics-error-suggestion">
+                      {error === 'Текст песни не найден'
+                        ? 'Попробуйте поискать текст для другой песни'
+                        : 'Попробуйте перезагрузить страницу или повторите попытку позже'}
+                    </p>
+                    <div className="lyrics-error-actions">
+                      <button 
+                        className="lyrics-error-button"
+                        onClick={() => {
+                          setError(null);
+                          setShowLyrics(false);
+                        }}
+                      >
+                        Вернуться к плееру
+                      </button>
+                      {error === 'Текст песни не найден' && (
+                        <button 
+                          className="lyrics-error-button secondary"
+                          onClick={() => {
+                            setError(null);
+                            // Здесь можно добавить логику для поиска текста в альтернативных источниках
+                          }}
+                        >
+                          Поискать в других источниках
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <pre className="lyrics-text">
