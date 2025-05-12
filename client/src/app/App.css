@@ -2856,7 +2856,7 @@ body {
 
 .share-notification {
   position: fixed;
-  bottom: 100px;
+  bottom: 50px;
   left: 50%;
   transform: translateX(-50%);
   background-color: var(--primary-color);
@@ -2867,12 +2867,12 @@ body {
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 2000;
-  animation: slideUp 0.3s ease, fadeOut 0.3s ease 1.7s forwards;
+  animation: slideUpNotification 0.3s ease-out, fadeOutNotification 0.3s ease 1.7s forwards;
 }
 
-@keyframes slideUp {
+@keyframes slideUpNotification {
   from {
-    transform: translate(-50%, 20px);
+    transform: translate(-50%, 50px);
     opacity: 0;
   }
   to {
@@ -2881,7 +2881,7 @@ body {
   }
 }
 
-@keyframes fadeOut {
+@keyframes fadeOutNotification {
   from {
     opacity: 1;
   }
