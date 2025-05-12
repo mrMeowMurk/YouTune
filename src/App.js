@@ -333,13 +333,34 @@ function App() {
     }
   }, [isPlaying, loading]);
 
+  // Обновляем функцию форматирования времени
   const formatTime = (timeInSeconds) => {
     if (!timeInSeconds || isNaN(timeInSeconds)) return '0:00';
+    
+    // Конвертируем миллисекунды в секунды если значение слишком большое
+    if (timeInSeconds > 3600000) {
+      timeInSeconds = timeInSeconds / 1000;
+    }
     
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  // Функция для получения длительности трека
+  const getTrackDuration = useCallback((track) => {
+    if (!track) return 0;
+    
+    // Проверяем различные форматы длительности
+    if (track.duration_ms) {
+      return track.duration_ms / 1000; // Конвертируем миллисекунды в секунды
+    }
+    if (track.duration) {
+      // Если длительность уже в секундах
+      return typeof track.duration === 'number' ? track.duration : 0;
+    }
+    return 0;
+  }, []);
 
   const handleProgressClick = useCallback((e) => {
     if (!audioRef.current || !progressRef.current || loading || isBuffering) return;
@@ -446,11 +467,12 @@ function App() {
           )}
         </div>
       ) : (
-        tracks.map(track => (
+        tracks.map((track, index) => (
           <div 
             key={track.id} 
             className={`track-item ${currentTrack?.id === track.id ? 'active' : ''}`}
           >
+            <span className="track-number">{index + 1}</span>
             <div className="track-main" onClick={() => !loading && handleTrackSelect(track, tracks)}>
               <img 
                 src={track.album?.images[0]?.url || '/default-album.png'} 
@@ -464,24 +486,34 @@ function App() {
                 <h3>{track.name}</h3>
                 <p>{track.artists.map(artist => artist.name).join(', ')}</p>
               </div>
-              {currentTrack?.id === track.id && (
-                <div className="track-status">
-                  {loading ? '⌛' : (isPlaying ? '▶' : '⏸')}
-                </div>
-              )}
             </div>
-            <button 
-              className="favorite-button"
-              onClick={() => toggleFavorite(track.id)}
-              disabled={loading}
-            >
-              {favoriteTracksIds.has(track.id) ? '❤️' : '🤍'}
-            </button>
+            <span className="track-duration">
+              {formatTime(getTrackDuration(track))}
+            </span>
+            {currentTrack?.id === track.id ? (
+              <div className="track-status">
+                {loading ? (
+                  <i className="fas fa-spinner fa-spin"></i>
+                ) : isPlaying ? (
+                  <i className="fas fa-volume-up"></i>
+                ) : (
+                  <i className="fas fa-pause"></i>
+                )}
+              </div>
+            ) : (
+              <button 
+                className={`favorite-button ${favoriteTracksIds.has(track.id) ? 'active' : ''}`}
+                onClick={() => toggleFavorite(track.id)}
+                disabled={loading}
+              >
+                <i className={`fas ${favoriteTracksIds.has(track.id) ? 'fa-heart' : 'fa-heart'}`}></i>
+              </button>
+            )}
           </div>
         ))
       )}
     </div>
-  ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite]);
+  ), [currentTrack, loading, isPlaying, handleTrackSelect, favoriteTracksIds, toggleFavorite, formatTime, getTrackDuration]);
 
   // Компонент для отображения ошибок
   const ErrorMessage = ({ message }) => (
@@ -831,7 +863,7 @@ function App() {
                 disabled={loading || recommendations.length === 0}
               >
                 <span className="action-icon">▶️</span>
-                <span>Случайный плейлист</span>
+                <span>Случайный трек</span>
               </button>
               <button 
                 className="action-button"
@@ -1002,7 +1034,15 @@ function App() {
             <div className="player-right">
               <div className="volume-control">
                 <button onClick={toggleMute} className="volume-button">
-                  {isMuted ? '🔇' : volume > 0.5 ? '🔊' : volume > 0 ? '🔉' : '🔈'}
+                  {isMuted ? (
+                    <i className="fas fa-volume-mute"></i>
+                  ) : volume > 0.5 ? (
+                    <i className="fas fa-volume-up"></i>
+                  ) : volume > 0 ? (
+                    <i className="fas fa-volume-down"></i>
+                  ) : (
+                    <i className="fas fa-volume-off"></i>
+                  )}
                 </button>
                 <input
                   type="range"

@@ -575,33 +575,22 @@ body {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-}
-
-.track-list h2::before {
-  content: '🎵';
-  font-size: 28px;
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--background-highlight);
 }
 
 .track-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--spacing-md);
   padding: var(--spacing-md);
   background-color: var(--background-secondary);
   border-radius: var(--border-radius);
   margin-bottom: var(--spacing-sm);
   cursor: pointer;
-  transition: var(--transition-default);
+  transition: all 0.3s var(--animation-timing);
   position: relative;
-  overflow: hidden;
-}
-
-.track-main {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  cursor: pointer;
 }
 
 .track-item:hover {
@@ -614,75 +603,134 @@ body {
   border-left: 4px solid var(--primary-color);
 }
 
-.track-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background-color: var(--primary-color);
+.track-number {
+  width: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.track-item.active .track-number {
+  color: var(--primary-color);
+}
+
+.track-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
 }
 
 .track-image {
-  width: 60px;
-  height: 60px;
-  border-radius: var(--border-radius);
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
   object-fit: cover;
-  margin-right: var(--spacing-md);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s var(--animation-timing);
+}
+
+.track-item:hover .track-image {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .track-info {
   flex: 1;
-  min-width: 0; /* Для работы text-overflow */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .track-info h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: var(--spacing-xs);
   color: var(--text-primary);
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .track-info p {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.track-duration {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-right: var(--spacing-md);
+  min-width: 45px;
+  text-align: right;
+}
+
+.track-item:hover .track-duration {
+  color: var(--text-primary);
 }
 
 .track-status {
-  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   color: var(--primary-color);
-  margin-left: var(--spacing-md);
-  min-width: 24px;
-  text-align: center;
+  font-size: 16px;
 }
 
 .favorite-button {
   background: none;
   border: none;
-  padding: var(--spacing-sm);
-  font-size: 1.25rem;
+  padding: 8px;
+  font-size: 16px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
   opacity: 0.7;
-  margin-left: var(--spacing-md);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
-.favorite-button:hover:not(:disabled) {
-  transform: scale(1.2);
+.favorite-button:hover {
+  opacity: 1;
+  background-color: var(--background-highlight);
+  transform: scale(1.1);
+}
+
+.favorite-button.active {
+  color: var(--primary-color);
   opacity: 1;
 }
 
-.favorite-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+/* Добавляем анимацию для активного трека */
+@keyframes playingAnimation {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.track-item.active .track-status {
+  animation: playingAnimation 2s infinite;
 }
 
 .player {
@@ -927,8 +975,31 @@ body {
 .volume-control {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  position: relative;
+  gap: 8px;
+}
+
+.volume-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.volume-button:hover {
+  color: var(--text-primary);
+  background-color: var(--background-highlight);
+}
+
+.volume-button i {
+  font-size: 16px;
 }
 
 .volume-slider {
@@ -938,7 +1009,6 @@ body {
   background-color: var(--background-secondary);
   border-radius: 2px;
   outline: none;
-  transition: var(--transition-default);
 }
 
 .volume-slider::-webkit-slider-thumb {
