@@ -99,6 +99,7 @@ npm start
 
 ## 📞 Контакты
 
+Если у вас возникли вопросы или проблемы тогда:
 - GitHub: [@mrMeowMurk](https://github.com/mrMeowMurk)
 - Напишите в Telegram: @MrMeowMurk
 
